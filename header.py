@@ -1,9 +1,8 @@
 import re
 
-table='machine_events'
 
 def get_table_header(table):
-    with open('schema.csv') as schema:
+    with open('data/schema.csv') as schema:
         header=  [
             line.split(',')[2].lower().replace(' ', '_')\
             for line in schema.readlines() if re.match(f'^{table}/*', line) 
