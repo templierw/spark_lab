@@ -1,19 +1,14 @@
-gsutil  cp ./init.sh gs://wallbucket
-
 gcloud dataproc clusters create pysparking \
     --enable-component-gateway \
     --bucket wallbucket \
     --region europe-west1 \
     --subnet default \
     --zone europe-west1-b \
-    --master-machine-type n1-standard-2 \
+    --master-machine-type n1-standard-4 \
     --master-boot-disk-size 50 \
-    --num-workers 2 \
-    --worker-machine-type n1-standard-4 \
+    --num-workers 4 \
+    --worker-machine-type n1-highmem-4 \
     --worker-boot-disk-size 50 \
     --image-version 2.0-ubuntu18 \
     --scopes 'https://www.googleapis.com/auth/cloud-platform' \
     --project lsdm-pyspark
-
-#--initialization-actions 'gs://wallbucket/init.sh' \
-#--optional-components JUPYTER \

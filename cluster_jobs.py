@@ -1,7 +1,7 @@
 import os
 import time
 import numpy as np
-from datetime import datetime
+from datetime import datetime as dt
 
 from pyspark import SparkContext
 from google.cloud import storage
@@ -93,6 +93,8 @@ def job_1():
             for cpu_type, value in cpu_dist.items()
     )
 
+    TABLES['machine_events'].rdd.unpersist()
+
     return res
 
 def job_2():
@@ -105,24 +107,56 @@ def job_2():
 
     return res
 
-def main(nb_job):
-    timestamp = datetime.datetime.now().strftime("%m/%d/%Y_%H:%M:%S")
+def job_3():
+
+    job_task_sched = TABLES['task_events'].select(['scheduling_class','job_id'])
+
+    ress = []
+    for sched in ['0','1','2','3']:
+        print(f"Computing job/task distribution for scheduling class [{sched}]")
+        s = job_task_sched.filter(lambda x: x[0] == sched).map(lambda x: x[1])
+        ress.append(
+            f'scheduling class: {sched}, #jobs: {s.distinct().count()}, #tasks {s.count()}'
+        )
+    res = '\n'.join(ress)
+
+    return res
+
+def job_4():
+    priorities = sorted([int(x[0]) for x in TABLES['task_events'].select(['priority']).distinct().collect()])
+    p_evicted = np.zeros(len(priorities)+1)
+
+    rdd = TABLES['task_events'].select(['event_type', 'priority']).map(lambda x: tuple(int(y) for y in x))
+
+    for i,priority in enumerate(priorities):
+        print(f"Counting tasks for priority [{priority}]")
+        p_evicted[i] = rdd.filter(lambda x: (x[0]==2 and x[1] == priority)).count()
+
+    p_evicted[-1] = np.sum(p_evicted[:-1])
+
+    def proba(pri):
+        pri_idx = priorities.index(pri)
+        return (p_evicted[pri_idx]) / p_evicted[-1]
+
+    print(f"Computing eviction probabilities for priorities]")
+    return '\n'.join(
+        f'priority: {pri} = {proba(pri)}' \
+            for pri in priorities
+        )
+
+def main():
+    timestamp = dt.now().strftime("%m.%d.%Y_%H:%M:%S")
     
     temp_file = open('tempres.txt', 'x+')
     blob = bucket.blob(f'jobs/job_{timestamp}_result.txt')
 
-    for n in range(1,nb_job+1):
-        job = f'job{n}'
+    for n, job in enumerate([job_1, job_2, job_3, job_4]):
         start = time.time()
         res = job()
         t = round(time.time() - start, 2)
 
-        l1 = f'Job #{n} total time = {t}\n'
-        output = f"""
-            {l1}\n
-            {''*len(l1)}\n
-            {res}\n\n
-        """
+        l1 = f'Job #{n+1} total time = {t}'
+        output = f"{l1}\n{'-'*len(l1)}\n{res}\n\n"
         print(output)
         temp_file.write(output)
 
@@ -130,3 +164,5 @@ def main(nb_job):
     blob.upload_from_filename('tempres.txt')
     os.remove('tempres.txt')
 
+if __name__ == "__main__":
+    main()
