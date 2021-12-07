@@ -97,6 +97,10 @@ def job_1():
 
     return res
 
+"""
+job2: 
+"""
+
 def job_2():
     job = TABLES['task_events'].select(['job_id'])
     task_per_job = list(job.countByValue().values())
@@ -107,41 +111,104 @@ def job_2():
 
     return res
 
+"""
+job3: 
+"""
+
 def job_3():
 
     job_task_sched = TABLES['task_events'].select(['scheduling_class','job_id'])
 
-    ress = []
-    for sched in ['0','1','2','3']:
-        print(f"Computing job/task distribution for scheduling class [{sched}]")
-        s = job_task_sched.filter(lambda x: x[0] == sched).map(lambda x: x[1])
-        ress.append(
-            f'scheduling class: {sched}, #jobs: {s.distinct().count()}, #tasks {s.count()}'
-        )
-    res = '\n'.join(ress)
+    def init(new):
+        job = set()
+        job.add(new)
+        return [job, 1]
 
-    return res
+    def merge(old, new):
+        old[0].add(new)
+        return [old[0], old[1] + 1]
+
+    def combine(c1, c2):
+        u = c1[0].union(c2[0])
+        return [u, c1[1]+c2[1]]
+
+    res = job_task_sched.combineByKey(init, merge, combine)\
+                .mapValues(lambda x: (len(x[0]), x[1]))
+
+    return '\n'.join(
+        f'scheduling class [{s}], #job: {j}, #task: {t}' for \
+            s, (j,t) in res.collect()
+    )
+
+"""
+job4: 
+"""
 
 def job_4():
-    priorities = sorted([int(x[0]) for x in TABLES['task_events'].select(['priority']).distinct().collect()])
-    p_evicted = np.zeros(len(priorities)+1)
+    rdd = TABLES['task_events'].select(['event_type', 'priority'])\
+        .filter(lambda x: x[0] == '2')\
+        .map(lambda x: int(x[1]))
 
-    rdd = TABLES['task_events'].select(['event_type', 'priority']).map(lambda x: tuple(int(y) for y in x))
-
-    for i,priority in enumerate(priorities):
-        print(f"Counting tasks for priority [{priority}]")
-        p_evicted[i] = rdd.filter(lambda x: (x[0]==2 and x[1] == priority)).count()
-
-    p_evicted[-1] = np.sum(p_evicted[:-1])
-
-    def proba(pri):
-        pri_idx = priorities.index(pri)
-        return (p_evicted[pri_idx]) / p_evicted[-1]
+    total_evicted = rdd.count()
+    p = rdd.countByValue()
 
     print(f"Computing eviction probabilities for priorities]")
     return '\n'.join(
-        f'priority: {pri} = {proba(pri)}' \
-            for pri in priorities
+        f'priority: {pri} = {round(count/total_evicted, 6)}' \
+            for pri, count in sorted(p.items())
+        )
+
+"""
+job5: 
+"""
+
+def job_5():
+    m_per_j = TABLES['task_events'].select(['job_id', 'machine_id'])\
+           .groupByKey()\
+           .mapValues(lambda x: len(set(x)))\
+           .sortBy(lambda x: x[1], ascending=False)
+
+    return '\n'.join(
+        f'job [{job}], # machines = {machine}' \
+            for job, machine in m_per_j.take(5)
+    )
+
+"""
+job6.1
+"""
+
+def job_6_1():
+    print("job 6.1: creating rdd for cpu request...")
+    cpu_req = TABLES['task_events'].select(['job_id','task_index','cpu_request'])\
+                     .filter(lambda x: x[2] != 'NA')\
+                     .map(lambda x: ((x[0],x[1]),float(x[2])))
+    TABLES['task_events'].rdd.unpersist()
+
+    print("job 6.1: creating rdd for cpu usage...")
+    cpu_us = TABLES['task_usage'].select(['job_id','task_index','cpu_rate'])\
+                   .filter(lambda x: x[2] != 'NA')\
+                   .map(lambda x: ((x[0],x[1]),float(x[2])))
+    TABLES['task_usage'].rdd.unpersist()
+
+    """
+    inner functions
+    """
+    def avg_init(row):
+        return (row[0], row[1], 1)
+
+    def avg_merge(old, new):
+        return (old[0]+new[0],old[1]+new[1],old[2]+1)
+
+    def avg_cmb(old, new):
+        return (old[0]+new[0],old[1]+new[1],old[2]+new[2])
+
+    print("job 6.1: computing stats...")
+    cpu_cons_avg = cpu_req.join(cpu_us).combineByKey(avg_init,avg_merge, avg_cmb)
+    res = cpu_cons_avg.mapValues(lambda x: (round(x[0]/x[2],2),round(x[1]/x[2], 2)))\
+                .sortBy(lambda x: x[1][0], ascending=False).take(10)
+
+    return 'JOB | TASK | CPU REQ | CPU USAGE\n' + '\n'.join(
+        f'{job} | {task} | {cpu_r} | {cpu_u}' for (job, task), (cpu_r, cpu_u) in res
         )
 
 def main():
@@ -150,7 +217,9 @@ def main():
     temp_file = open('tempres.txt', 'x+')
     blob = bucket.blob(f'jobs/job_{timestamp}_result.txt')
 
-    for n, job in enumerate([job_1, job_2, job_3, job_4]):
+    jobs = [job_1, job_2, job_3, job_4, job_5]
+
+    for n, job in enumerate(jobs):
         start = time.time()
         res = job()
         t = round(time.time() - start, 2)

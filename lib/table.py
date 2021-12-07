@@ -1,6 +1,5 @@
 from pyspark import SparkContext
 import os
-import re
 import pandas as pd
 
 HEADERS = {
@@ -37,7 +36,7 @@ class Table():
             self.rdd = spark_context.textFile(f"./local_data/{table_name}.csv").map(preprocess)
             if cache: self.rdd.cache()
 
-            self.headers = HEADERS[table_name]
+            self.header = HEADERS[table_name]
 
         else:
             print(f"Could not creadt RDD for {table_name}...")
