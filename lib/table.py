@@ -39,7 +39,7 @@ class Table():
             self.header = HEADERS[table_name]
 
         else:
-            print(f"Could not creadt RDD for {table_name}...")
+            print(f"Could not create RDD for {table_name}...")
 
     def select(self, column_names):
 
