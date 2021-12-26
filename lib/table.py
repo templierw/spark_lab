@@ -20,6 +20,10 @@ HEADERS = {
         'disk_i/o_time', 'local_disk_space_usage', 'maximum_cpu_rate',
         'maximum_disk_io_time', 'cycles_per_instruction', 'memory_accesses_per_instruction',
         'sample_portion', 'aggregation_type', 'sampled_cpu_usage'
+    ],
+    "task_constraints": [
+        'time', 'job_id', 'task_index', 'comparison_operator', 
+        'attribute_name', 'attribute_value'
     ]
 }
 
@@ -30,7 +34,7 @@ class Table():
         if os.path.isfile(f'local_data/{table_name}.csv'):
             def preprocess(row: str):
                 row = row.split(',')
-                
+
                 return ['NA' if x == "" else x for x in row] \
                     if "" in row else row
             self.rdd = spark_context.textFile(f"./local_data/{table_name}.csv").map(preprocess)
