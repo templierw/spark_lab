@@ -1,4 +1,5 @@
-from Job import Job, Table
+from job_rdd.job import Job, Table
+import sys
 import numpy as np
 
 
@@ -12,9 +13,9 @@ def job_2():
         f'max: {np.max(task_per_job)}', f'min: {np.min(task_per_job)}',
     ])
 
-def main():
-    job = Job('name', job_2)
+def main(name):
+    job = Job(name, job_2)
     job.run()
     
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1])

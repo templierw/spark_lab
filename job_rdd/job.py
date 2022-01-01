@@ -8,10 +8,9 @@ from google.cloud import storage
 Spark session & 
 Google cloud storage bucket
 """
-global sc
-sc = SparkContext()
-bucket = storage.Client().get_bucket('wallbucket')
 
+def init():
+    return SparkContext()
 
 """
 Tables Headers
@@ -72,13 +71,11 @@ class Table():
 tables
 """
 
-global TABLES
-TABLES = {table: Table(table, sc) for table in HEADERS.keys()}
-
 class Job:
 
     def __init__(self, job_name, job_fnc) -> None:
-    
+        
+        bucket = storage.Client().get_bucket('wallbucket')
         self.blob = bucket.blob(
             f'jobs/job_{job_name}_{dt.now().strftime("%m.%d.%Y_%H:%M:%S")}_result.txt'
         )

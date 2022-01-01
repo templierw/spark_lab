@@ -1,8 +1,9 @@
-from Job import Job, Table
+import sys
+from job import Job, Table, init
 
 def job_1():
 
-    data = Table('machine_events', Job.sc)
+    data = Table('machine_events', init())
 
     cpu_dist = data.select(['cpus']).countByValue()
 
@@ -13,9 +14,9 @@ def job_1():
 
     return res
 
-def main():
-    job = Job('name', job_1)
+def main(name):
+    job = Job(name, job_1)
     job.run()
     
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1])

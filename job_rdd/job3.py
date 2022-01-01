@@ -1,9 +1,10 @@
-from Job import Job, Table
+from job_rdd.job import Job, Table
+import sys
 
 def init(new):
-        job = set()
-        job.add(new)
-        return [job, 1]
+    job = set()
+    job.add(new)
+    return [job, 1]
 
 def merge(old, new):
     old[0].add(new)
@@ -25,9 +26,9 @@ def job_3():
             s, (j,t) in res.collect()
     )
 
-def main():
-    job = Job('name', job_3)
+def main(name):
+    job = Job(name, job_3)
     job.run()
     
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1])
