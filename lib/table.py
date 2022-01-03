@@ -1,6 +1,7 @@
 from pyspark import SparkContext
 import os
 import pandas as pd
+from . import datadl
 
 HEADERS = {
     "machine_events": ['time', 'machine_id', 'event_type', 'platform_id', 'cpus', 'memory'],
@@ -30,6 +31,13 @@ HEADERS = {
 class Table():
 
     def __init__(self, table_name, spark_context:SparkContext, cache=True) -> None:
+
+        if not os.path.isfile(f'local_data/{table_name}.csv'):
+            # Download file as it is not present
+            status = datadl.download(table_name, 3)
+            if status != 0:
+                print(f"Could not download relevant data for {table_name}...")
+                return -1
         
         if os.path.isfile(f'local_data/{table_name}.csv'):
             def preprocess(row: str):
