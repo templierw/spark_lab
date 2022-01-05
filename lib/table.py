@@ -30,28 +30,36 @@ HEADERS = {
 
 class Table():
 
-    def __init__(self, table_name, spark_context:SparkContext, cache=True) -> None:
+    def __init__(self, table_name, spark_context, local=False, cache=True) -> None:
+        def preprocess(row: str):
+            row = row.split(',')
 
-        if not os.path.isfile(f'local_data/{table_name}.csv'):
-            # Download file as it is not present
-            status = datadl.download(table_name, 3)
-            if status != 0:
-                print(f"Could not download relevant data for {table_name}...")
-                return -1
-        
-        if os.path.isfile(f'local_data/{table_name}.csv'):
-            def preprocess(row: str):
-                row = row.split(',')
+            return ['NA' if x == "" else x for x in row] \
+                if "" in row else row
 
-                return ['NA' if x == "" else x for x in row] \
-                    if "" in row else row
-            self.rdd = spark_context.textFile(f"./local_data/{table_name}.csv").map(preprocess)
+        if local:
+            if not os.path.isfile(f'local_data/{table_name}.csv'):
+                # Download file as it is not present
+                status = datadl.download(table_name, 3)
+                if status != 0:
+                    print(f"Could not download relevant data for {table_name}...")
+                    return -1
+            
+            if os.path.isfile(f'local_data/{table_name}.csv'):
+                self.rdd = spark_context.textFile(f"./local_data/{table_name}.csv").map(preprocess)
+                if cache: self.rdd.cache()
+
+                self.header = HEADERS[table_name]
+
+            else:
+                print(f"Could not create RDD for {table_name}...")
+
+        # full data on gc
+        else:
+            self.rdd = spark_context.textFile(f"gs://clusterdata-2011-2/{table_name}/").map(preprocess)
             if cache: self.rdd.cache()
 
             self.header = HEADERS[table_name]
-
-        else:
-            print(f"Could not create RDD for {table_name}...")
 
     def select(self, column_names):
 
