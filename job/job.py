@@ -2,7 +2,10 @@ import time
 from datetime import datetime as dt
 
 from pyspark import SparkContext
+from pyspark.sql import SparkSession
+from pyspark.sql.types import StructType, StringType
 from google.cloud import storage
+
 
 """
 Spark session & 
@@ -16,7 +19,6 @@ def init():
 Tables Headers
 (hard-coded to avoid submitted many files to the dataproc cluster)
 """
-global HEADERS
 HEADERS = {
     "machine_events": ['time', 'machine_id', 'event_type', 'platform_id', 'cpus', 'memory'],
     "job_events": [
@@ -42,20 +44,35 @@ HEADERS = {
     ]
 }
 
+fs = lambda table: f"gs://clusterdata-2011-2/{table}/"
+
+def create_dataframe(table_name):
+    schema = StructType()
+    spark = SparkSession.builder.master("local[*]")\
+                .appName("pyspark_lab")\
+                .getOrCreate()
+
+    for h in HEADERS[table_name]:
+        schema.add(h, StringType(), True)
+
+    return spark.read.option('delimiter', ',').format("csv")\
+            .schema(schema).load(fs(table_name)).fillna('NA')
+
 """
 Cloud Table Class
 """
 class Table():
 
-    def __init__(self, table_name, spark_context, cache=True) -> None:
+    def __init__(self, table_name, spark_context) -> None:
         
         def preprocess(row: str):
             row = row.split(',')
             return ['NA' if x == "" else x for x in row] \
                      if "" in row else row
 
-        self.rdd = spark_context.textFile(f"gs://clusterdata-2011-2/{table_name}/").map(preprocess)
-        if cache: self.rdd.cache()
+        self.rdd = spark_context.textFile(fs(table_name)).map(preprocess)
+        
+        self.rdd.cache()
 
         self.header = HEADERS[table_name]
 
@@ -77,16 +94,16 @@ tables
 
 class Job:
 
-    def __init__(self, job_name, job_fnc, viz=True) -> None:
+    def __init__(self, job_name, job_fnc, viz=False) -> None:
         
         bucket = storage.Client().get_bucket('wallbucket')
-        prefix = f'jobs/job_{job_name}_{dt.now().strftime("%m.%d.%Y_%H:%M:%S")}'
+        prefix = f'jobs/job_{job_name}_{dt.now().strftime("%m.%d.%Y")}'
         self.res = bucket.blob(f'{prefix}_result.txt')
         self.viz = bucket.blob(f'{prefix}_plot.txt') if viz else None
         self.name = job_name
         self.fnc = job_fnc
 
-    def run(self, viz=False):
+    def run(self):
         start = time.time()
         res = self.fnc()
 
