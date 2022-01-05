@@ -35,6 +35,10 @@ HEADERS = {
         'disk_i/o_time', 'local_disk_space_usage', 'maximum_cpu_rate',
         'maximum_disk_io_time', 'cycles_per_instruction', 'memory_accesses_per_instruction',
         'sample_portion', 'aggregation_type', 'sampled_cpu_usage'
+    ],
+    "task_constraints": [
+        'time', 'job_id', 'task_index', 'comparison_operator', 
+        'attribute_name', 'attribute_value'
     ]
 }
 
@@ -73,20 +77,22 @@ tables
 
 class Job:
 
-    def __init__(self, job_name, job_fnc) -> None:
+    def __init__(self, job_name, job_fnc, viz=True) -> None:
         
         bucket = storage.Client().get_bucket('wallbucket')
-        self.blob = bucket.blob(
-            f'jobs/job_{job_name}_{dt.now().strftime("%m.%d.%Y_%H:%M:%S")}_result.txt'
-        )
+        prefix = f'jobs/job_{job_name}_{dt.now().strftime("%m.%d.%Y_%H:%M:%S")}'
+        self.res = bucket.blob(f'{prefix}_result.txt')
+        self.viz = bucket.blob(f'{prefix}_plot.txt') if viz else None
         self.name = job_name
         self.fnc = job_fnc
 
-    def run(self):
+    def run(self, viz=False):
         start = time.time()
         res = self.fnc()
 
         l1 = f'total time = {round(time.time() - start, 2)}'
         output = f"{l1}\n{'-'*len(l1)}\n{res}\n\n"
         print(output)
-        self.blob.upload_from_string(output)
+        self.res.upload_from_string(output)
+        if self.viz:
+            self.viz.upload_from_filename('viz.png')
