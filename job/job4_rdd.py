@@ -1,8 +1,8 @@
 import sys
-from job_rdd.job import Job, Table
+from job import Job, Table, init
 
 def job_4():
-    rdd = Table('task_events', Job.sc)\
+    rdd = Table('task_events', init())\
         .select(['event_type', 'priority'])\
         .filter(lambda x: x[0] == '2')\
         .map(lambda x: int(x[1]))

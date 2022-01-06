@@ -1,11 +1,11 @@
-from job_rdd.job import Job, Table
+from job import Job, Table, init
 import sys
 import numpy as np
 
 
 def job_2():
 
-    job = Table('machine_events', Job.sc).select(['job_id'])
+    job = Table('task_events', init()).select(['job_id'])
     task_per_job = list(job.countByValue().values())
 
     return '\n'.join([

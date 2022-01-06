@@ -1,4 +1,4 @@
-from job_rdd.job import Job, Table
+from job import Job, Table, init
 import sys
 
 def init(new):
@@ -16,7 +16,7 @@ def combine(c1, c2):
 
 def job_3():
 
-    res = Table('task_events', Job.sc)\
+    res = Table('task_events', init())\
             .select(['scheduling_class','job_id'])\
             .combineByKey(init, merge, combine)\
             .mapValues(lambda x: (len(x[0]), x[1]))

@@ -6,7 +6,7 @@ gcloud dataproc clusters create pysparking \
     --zone europe-west1-b \
     --master-machine-type n1-standard-4 \
     --master-boot-disk-size 50 \
-    --num-workers 4 \
+    --num-workers 5 \
     --worker-machine-type n1-highmem-4 \
     --worker-boot-disk-size 50 \
     --image-version 2.0-ubuntu18 \
