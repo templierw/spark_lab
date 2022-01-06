@@ -97,7 +97,7 @@ class Job:
     def __init__(self, job_name, job_fnc, viz=False) -> None:
         
         bucket = storage.Client().get_bucket('wallbucket')
-        prefix = f'jobs/job_{job_name}_{dt.now().strftime("%m.%d.%Y")}'
+        prefix = f'jobs/{job_name}/{dt.now().strftime("%m.%d")}'
         self.res = bucket.blob(f'{prefix}_result.txt')
         self.viz = bucket.blob(f'{prefix}_plot.txt') if viz else None
         self.name = job_name

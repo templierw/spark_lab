@@ -4,8 +4,8 @@ from job import Job, create_dataframe
 def job_1():
 
     df = create_dataframe('machine_events')
+    return df.groupBy('cpus').count()._jdf.showString(20, 20, False)
 
-    return df.groupBy('cpus').count().show()
 
 
 def main(name):

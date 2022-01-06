@@ -8,10 +8,10 @@ function creater_cluster () {
     --region europe-west1 \
     --subnet default \
     --zone europe-west1-b \
-    --master-machine-type n1-standard-4 \
+    --master-machine-type n1-standard-2 \
     --master-boot-disk-size 50 \
     --num-workers $2 \
-    --worker-machine-type n1-highmem-4 \
+    --worker-machine-type n1-highmem-2 \
     --worker-boot-disk-size 50 \
     --image-version 2.0-ubuntu18 \
     --scopes 'https://www.googleapis.com/auth/cloud-platform' \
@@ -27,19 +27,17 @@ function launch_job () {
     --files=job/job.py job/job${JOB}_${IMP}.py -- ${JOB_NAME}"
 }
 
-for nb_nodes in {2,4,8}
+for nb_nodes in {4,7}
     do
         JOB_NAME="job_${JOB}_${nb_nodes}nodes"
         echo "Creating cluster for job [${JOB_NAME}]"
         creater_cluster $BUCKET $nb_nodes
         
         echo "Lauching job [${JOB_NAME}]"
-        rdd="$(launch_job $JOB $JOB_NAME 'rdd')"
-        df="$(launch_job $JOB $JOB_NAME 'df')"
         echo -e "\t rdd version"
-        $($rdd)
+        $(launch_job $JOB $JOB_NAME 'rdd')
         echo -e "\t df version"
-        $($df)
+        $(launch_job $JOB $JOB_NAME 'df')
 
         gcloud dataproc clusters delete pysparking --region=europe-west1 --quiet
     done
