@@ -1,19 +1,19 @@
 import time
 from datetime import datetime as dt
+import os
+import subprocess
+import pandas as pd
 
 from pyspark import SparkContext
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StringType
 from google.cloud import storage
 
-
 """
-Spark session & 
-Google cloud storage bucket
+The bucket containing the data for the analysis
 """
-
-def init():
-    return SparkContext()
+BASE_URL = "gs://clusterdata-2011-2"
+data = lambda table: f"{BASE_URL}/{table}"
 
 """
 Tables Headers
@@ -44,8 +44,70 @@ HEADERS = {
     ]
 }
 
-fs = lambda table: f"gs://clusterdata-2011-2/{table}/"
+"""
+Data downloader
 
+A service to handle the interaction with gsutil
+to download N data files and work locally
+"""
+
+LOCALDATA_PATH = "./local_data/"
+EXEC = "gsutil"
+
+from pathlib import Path
+
+def download(tableName, nbFilesMax):
+    # Check if exists
+    if (tableName not in HEADERS.keys()):
+        print(f"{tableName} is not marked as available.")
+        return -1
+    else:
+        print(f"Will download at most {nbFilesMax} file(s) from {tableName}.")
+
+    Path(f"{LOCALDATA_PATH}/{tableName}").mkdir(parents=True, exist_ok=True)
+
+    # Get all parts of the table in buckets
+    try:
+        print(f"Polling bucket {data(tableName)}")
+        sc = subprocess.Popen(
+            [EXEC, "ls", data(tableName)],
+            stderr=subprocess.PIPE, stdout=subprocess.PIPE
+            )
+        (sout, _) = sc.communicate()
+        bucket = sout.decode("utf-8").split('\n')
+        bucket.remove('')
+        bucket = [b.replace(data(tableName), '') for b in bucket]
+
+        if nbFilesMax > len(bucket):
+            nbFilesMax = len(bucket)
+
+    except FileNotFoundError:
+        print(
+            f"{EXEC} is not installed on your system. Cannot proceed with the downloading.")
+        return -2
+
+    for b in bucket[:nbFilesMax]:
+        # Download it
+        print(f'Dowloading [{b}]')
+        subprocess.call(
+            [EXEC, "cp", f'{data(tableName)}{b}', f"{LOCALDATA_PATH}/{tableName}"],
+            stderr=subprocess.PIPE, stdout=subprocess.PIPE
+            )              
+
+    print(f"Successfully downloaded table [{tableName}] ({nbFilesMax}/{len(bucket)}).")
+    return 0
+
+
+"""
+Spark session
+"""
+
+def init():
+    return SparkContext()
+
+"""
+Create PySpark Dataframe
+"""
 def create_dataframe(table_name):
     schema = StructType()
     spark = SparkSession.builder.master("local[*]")\
@@ -56,24 +118,45 @@ def create_dataframe(table_name):
         schema.add(h, StringType(), True)
 
     return spark.read.option('delimiter', ',').format("csv")\
-            .schema(schema).load(fs(table_name)).fillna('NA')
+            .schema(schema).load(data(table_name)).fillna('NA')
 
 """
 Cloud Table Class
 """
 class Table():
 
-    def __init__(self, table_name, spark_context) -> None:
+    def __init__(self, table_name, spark_context, exec_mode) -> None:
         
         def preprocess(row: str):
             row = row.split(',')
             return ['NA' if x == "" else x for x in row] \
                      if "" in row else row
 
-        self.rdd = spark_context.textFile(fs(table_name)).map(preprocess)
+        #Cluster
+        if exec_mode == -1:
+            self.rdd = spark_context.textFile(data(table_name)).map(preprocess)
+        
+        #loca
+        elif exec_mode >= 1:
+            if not os.path.isdir(f"{LOCALDATA_PATH}/{table_name}"):
+                # Download file as it is not present
+                status = download(table_name, exec_mode)
+                if status != 0:
+                    print(f"Could not download relevant data for {table_name}...")
+                    return -1
+            
+            if os.path.isdir(f"{LOCALDATA_PATH}/{table_name}"):
+                self.rdd = spark_context.textFile(f"{LOCALDATA_PATH}/{table_name}").map(preprocess)
+
+            else:
+                print(f"Could not create RDD for {table_name}...")
+        
+        #error
+        else:
+            pass
+
         
         self.rdd.cache()
-
         self.header = HEADERS[table_name]
 
     def select(self, column_names):
@@ -88,9 +171,12 @@ class Table():
 
         return self.rdd.map(lambda x: tuple(x[i] for i in idx))
 
-"""
-tables
-"""
+    def pprint(self, take=None):
+        return pd.DataFrame(
+            data=self.rdd.take(take) if take is not None else self.rdd.collect(),
+            columns=self.header
+        )
+
 
 class Job:
 
