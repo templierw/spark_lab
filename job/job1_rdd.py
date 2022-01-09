@@ -1,9 +1,11 @@
 import sys
 from lib import Job, Table, init
+import time
 
 def job_1():
 
-    data = Table('machine_events', init())
+    data = Table('machine_events', init(), -1, True)
+    start = time.time()
 
     cpu_dist = data.select(['cpus']).countByValue()
 
@@ -11,8 +13,9 @@ def job_1():
         f'cpu type: {cpu_type[0]}, count: {value}' \
             for cpu_type, value in cpu_dist.items()
     )
+    
+    return res, round(time.time() - start, 2)
 
-    return res
 
 def main(name):
     job = Job(name, job_1)

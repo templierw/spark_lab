@@ -1,5 +1,6 @@
 from lib import Job, Table, init
 import sys
+import time
 
 def init(new):
     job = set()
@@ -16,15 +17,17 @@ def combine(c1, c2):
 
 def job_3():
 
-    res = Table('task_events', init())\
-            .select(['scheduling_class','job_id'])\
+    rdd = Table('task_events', init(), -1, True)
+    start = time.time()
+
+    res = rdd.select(['scheduling_class','job_id'])\
             .combineByKey(init, merge, combine)\
             .mapValues(lambda x: (len(x[0]), x[1]))
 
     return '\n'.join(
         f'scheduling class [{s}], #job: {j}, #task: {t}' for \
             s, (j,t) in res.collect()
-    )
+    ), round(time.time() - start, 2)
 
 def main(name):
     job = Job(name, job_3)
