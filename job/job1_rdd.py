@@ -1,5 +1,5 @@
 import sys
-from job import Job, Table, init
+from lib import Job, Table, init
 
 def job_1():
 
