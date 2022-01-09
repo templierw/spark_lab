@@ -1,4 +1,3 @@
-import time
 from datetime import datetime as dt
 import os
 import subprocess
@@ -98,7 +97,6 @@ def download(tableName, nbFilesMax, cloud=False):
                 )
 
         else:
-            print(f'Transferring [{b}]')
             subprocess.call(
                 [EXEC, "cp", f'{data(tableName)}{b}', f"gs://wallbucket/{tableName}"],
                 stderr=subprocess.PIPE, stdout=subprocess.PIPE
@@ -193,21 +191,17 @@ class Table():
 
 class Job:
 
-    def __init__(self, job_name, job_fnc, viz=False) -> None:
+    def __init__(self, job_name, job_fnc) -> None:
         
         bucket = storage.Client().get_bucket('wallbucket')
         prefix = f'jobs/{job_name}/{dt.now().strftime("%m.%d")}'
         self.res = bucket.blob(f'{prefix}_result.txt')
-        self.viz = bucket.blob(f'{prefix}_plot.txt') if viz else None
         self.fnc = job_fnc
 
     def run(self):
-        start = time.time()
-        res = self.fnc()
+        res, time = self.fnc()
 
-        l1 = f'total time = {round(time.time() - start, 2)}'
+        l1 = f'total time = {time}'
         output = f"{l1}\n{'-'*len(l1)}\n{res}\n\n"
         print(output)
         self.res.upload_from_string(output)
-        if self.viz:
-            self.viz.upload_from_filename('viz.png')
