@@ -160,10 +160,10 @@ class Table():
             download(table_name, exec_mode, cloud=cloud)
             self.rdd = spark_context.textFile(f"gs://wallbucket/{table_name}").map(preprocess)
         
-        elif exec_mode >= 1 and cloud:
+        elif exec_mode >= 1 and not cloud:
             if not os.path.isdir(f"{LOCALDATA_PATH}/{table_name}"):
                 # Download file as it is not present
-                status = download(table_name, exec_mode)
+                status = download(table_name, exec_mode, cloud=cloud)
                 if status != 0:
                     print(f"Could not download relevant data for {table_name}...")
                     return -1
