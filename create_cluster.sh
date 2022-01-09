@@ -11,4 +11,6 @@ gcloud dataproc clusters create pysparking \
     --worker-boot-disk-size 50 \
     --image-version 2.0-ubuntu18 \
     --scopes 'https://www.googleapis.com/auth/cloud-platform' \
-    --project lsdm-pyspark
+    --project lsdm-pyspark \
+    --optional-components JUPYTER \
+    --initialization-actions 'gs://wallbucket/init_node.sh'
