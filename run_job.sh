@@ -9,7 +9,7 @@ function creater_cluster () {
     --zone europe-west1-b \
     --master-machine-type n1-standard-4 \
     --master-boot-disk-size 50 \
-    --num-workers 4 \
+    --num-workers 5 \
     --worker-machine-type n1-highmem-4 \
     --worker-boot-disk-size 50 \
     --image-version 2.0-ubuntu18 \
@@ -23,7 +23,7 @@ function launch_job () {
     IMP=$3
     echo "gcloud dataproc jobs submit pyspark \
     --cluster=pysparking --region=europe-west1 \
-    --files=job/job.py job/job${JOB}_${IMP}.py -- ${JOB_NAME}"
+    --files=lib.py job/job${JOB}_${IMP}.py -- ${JOB_NAME}"
 }
 
 repeat(){
@@ -31,20 +31,20 @@ repeat(){
     echo
 }
 
-JOB_NAME="job_${job}"
-echo "Creating cluster for job [${JOB_NAME}]"
+echo "Creating cluster..."
 creater_cluster $BUCKET 
 
-for job in {1,2,3}; do
+for job in {4,5}; do
+        JOB_NAME="job_${job}"
         n="Lauching job [${JOB_NAME}]"
         repeat ${#n}
         echo $n
         repeat ${#n}
 
         echo -e "\n\t ### rdd version ###\n"
-        $(launch_job $JOB $JOB_NAME 'rdd')
+        $(launch_job $job $JOB_NAME 'rdd')
         echo -e "\n\t ### df version ###\n"
-        $(launch_job $JOB $JOB_NAME 'df')
+        $(launch_job $job $JOB_NAME 'df')
 done
 
 gcloud dataproc clusters delete pysparking --region=europe-west1 --quiet

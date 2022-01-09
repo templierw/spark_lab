@@ -1,5 +1,6 @@
 import sys
 from lib import Job, Table, init
+import time
 
 def avg_init(row):
     return (row[0], row[1], 1)
@@ -15,13 +16,14 @@ def job_6_1():
 
     sc = init()
 
-    cpu_req = Table('task_events', sc, exec_mode=-1)\
-        .select(['job_id','task_index','cpu_request'])\
+    rdd =  Table('task_events', sc, 100, True)
+    start = time.time()
+
+    cpu_req = rdd.select(['job_id','task_index','cpu_request'])\
         .filter(lambda x: x[2] != 'NA')\
         .map(lambda x: ((x[0],x[1]),float(x[2])))
 
-    cpu_us = Table('task_usage', sc, exec_mode=-1)\
-        .select(['job_id','task_index','cpu_rate'])\
+    cpu_us = rdd.select(['job_id','task_index','cpu_rate'])\
         .filter(lambda x: x[2] != 'NA')\
         .map(lambda x: ((x[0],x[1]),float(x[2])))
 
@@ -31,9 +33,11 @@ def job_6_1():
         )\
         .sortBy(lambda x: x[1][0], ascending=False).take(10)
 
-    return 'JOB | TASK | CPU REQ | CPU USAGE\n' + '\n'.join(
+    res = 'JOB | TASK | CPU REQ | CPU USAGE\n' + '\n'.join(
         f'{job} | {task} | {cpu_r} | {cpu_u}' for (job, task), (cpu_r, cpu_u) in res
         )
+
+    return res, round(time.time() - start, 2)
 
 def main(name):
     Job(name, job_6_1).run()

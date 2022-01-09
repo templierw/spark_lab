@@ -92,13 +92,13 @@ def download(tableName, nbFilesMax, cloud=False):
             # Download it
             print(f'Dowloading [{b}]')
             subprocess.call(
-                [EXEC, "cp", f'{data(tableName)}{b}', f"{LOCALDATA_PATH}/{tableName}"],
+                [EXEC, "cp", f'{data(tableName)}{b}', f"{LOCALDATA_PATH}/{tableName}/"],
                 stderr=subprocess.PIPE, stdout=subprocess.PIPE
                 )
 
         else:
             subprocess.call(
-                [EXEC, "cp", f'{data(tableName)}{b}', f"gs://wallbucket/{tableName}"],
+                [EXEC, "cp", f'{data(tableName)}{b}', f"gs://wallbucket/{tableName}/"],
                 stderr=subprocess.PIPE, stdout=subprocess.PIPE
                 ) 
 
@@ -118,7 +118,7 @@ Create PySpark Dataframe
 """
 def create_dataframe(table_name, exec_mode, cloud):
     schema = StructType()
-    spark = SparkSession.builder.master("local[*]")\
+    spark = SparkSession.builder\
                 .appName("pyspark_lab")\
                 .getOrCreate()
 
@@ -130,7 +130,7 @@ def create_dataframe(table_name, exec_mode, cloud):
 
     elif exec_mode > 1 and cloud:
         download(table_name, exec_mode, cloud=cloud)
-        fs = f"gs://wallbucket/{table_name}"
+        fs = f"gs://wallbucket/{table_name}/"
 
     else:
         download(table_name, exec_mode, cloud=cloud)

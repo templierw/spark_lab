@@ -1,17 +1,22 @@
 import sys
 from lib import Job, Table, init
+import time
 
 def job_5():
-    m_per_j = Table('task_events', init())\
-            .select(['job_id', 'machine_id'])\
+
+    rdd = Table('task_events', init(), -1, True)
+    start = time.time()
+    m_per_j = rdd.select(['job_id', 'machine_id'])\
             .groupByKey()\
             .mapValues(lambda x: len(set(x)))\
             .sortBy(lambda x: x[1], ascending=False)
 
-    return '\n'.join(
+    res = '\n'.join(
         f'job [{job}], # machines = {machine}' \
             for job, machine in m_per_j.take(5)
     )
+
+    return res, round(time.time() - start, 2)
 
 def main(name):
     Job(name, job_5).run()

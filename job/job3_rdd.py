@@ -2,7 +2,7 @@ from lib import Job, Table, init
 import sys
 import time
 
-def init(new):
+def ini(new):
     job = set()
     job.add(new)
     return [job, 1]
@@ -21,7 +21,7 @@ def job_3():
     start = time.time()
 
     res = rdd.select(['scheduling_class','job_id'])\
-            .combineByKey(init, merge, combine)\
+            .combineByKey(ini, merge, combine)\
             .mapValues(lambda x: (len(x[0]), x[1]))
 
     return '\n'.join(

@@ -6,9 +6,9 @@ import time
 
 def job_2():
 
-    job = Table('task_events', init()).select(['job_id'])
+    job = Table('task_events', init(), -1, True)
     start = time.time()
-    tasks_per_job = list(job.countByValue().values())
+    tasks_per_job = list(job.select(['job_id']).countByValue().values())
 
     mean = np.mean(tasks_per_job)
     std = np.std(tasks_per_job)
@@ -21,7 +21,7 @@ def job_2():
 
     res = '\n'.join([
         f'mean: {mean}', f'std: {std}',
-        f'max: {max}', f'min: {min}',
+        f'max: {max_v}', f'min: {min_v}',
         f'low_mean: {low_mean}', f'high_mean {high_mean}'
     ])
 
