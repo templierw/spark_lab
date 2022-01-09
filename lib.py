@@ -56,7 +56,7 @@ EXEC = "gsutil"
 
 from pathlib import Path
 
-def download(tableName, nbFilesMax):
+def download(tableName, nbFilesMax, cloud=False):
     # Check if exists
     if (tableName not in HEADERS.keys()):
         print(f"{tableName} is not marked as available.")
@@ -64,7 +64,8 @@ def download(tableName, nbFilesMax):
     else:
         print(f"Will download at most {nbFilesMax} file(s) from {tableName}.")
 
-    Path(f"{LOCALDATA_PATH}/{tableName}").mkdir(parents=True, exist_ok=True)
+    if not cloud:
+        Path(f"{LOCALDATA_PATH}/{tableName}").mkdir(parents=True, exist_ok=True)
 
     # Get all parts of the table in buckets
     try:
@@ -87,12 +88,21 @@ def download(tableName, nbFilesMax):
         return -2
 
     for b in bucket[:nbFilesMax]:
-        # Download it
-        print(f'Dowloading [{b}]')
-        subprocess.call(
-            [EXEC, "cp", f'{data(tableName)}{b}', f"{LOCALDATA_PATH}/{tableName}"],
-            stderr=subprocess.PIPE, stdout=subprocess.PIPE
-            )              
+
+        if not cloud:
+            # Download it
+            print(f'Dowloading [{b}]')
+            subprocess.call(
+                [EXEC, "cp", f'{data(tableName)}{b}', f"{LOCALDATA_PATH}/{tableName}"],
+                stderr=subprocess.PIPE, stdout=subprocess.PIPE
+                )
+
+        else:
+            print(f'Transferring [{b}]')
+            subprocess.call(
+                [EXEC, "cp", f'{data(tableName)}{b}', f"gs://wallbucket/{tableName}"],
+                stderr=subprocess.PIPE, stdout=subprocess.PIPE
+                ) 
 
     print(f"Successfully downloaded table [{tableName}] ({nbFilesMax}/{len(bucket)}).")
     return 0
@@ -125,7 +135,7 @@ Cloud Table Class
 """
 class Table():
 
-    def __init__(self, table_name, spark_context, exec_mode) -> None:
+    def __init__(self, table_name, spark_context, exec_mode, cloud) -> None:
         
         def preprocess(row: str):
             row = row.split(',')
@@ -133,11 +143,15 @@ class Table():
                      if "" in row else row
 
         #Cluster
-        if exec_mode == -1:
+        if exec_mode == -1 and cloud:
             self.rdd = spark_context.textFile(data(table_name)).map(preprocess)
         
         #loca
-        elif exec_mode >= 1:
+        elif exec_mode >= 1 and cloud:
+            download(table_name, exec_mode, cloud=cloud)
+            self.rdd = spark_context.textFile(f"gs://wallbucket/{table_name}").map(preprocess)
+        
+        elif exec_mode >= 1 and cloud:
             if not os.path.isdir(f"{LOCALDATA_PATH}/{table_name}"):
                 # Download file as it is not present
                 status = download(table_name, exec_mode)
@@ -150,7 +164,6 @@ class Table():
 
             else:
                 print(f"Could not create RDD for {table_name}...")
-        
         #error
         else:
             pass

@@ -1,8 +1,8 @@
 import sys
-from job_rdd.job import Job, Table
+from lib import Job, Table, init
 
 def job_5():
-    m_per_j = Table('task_events', Job.sc)\
+    m_per_j = Table('task_events', init())\
             .select(['job_id', 'machine_id'])\
             .groupByKey()\
             .mapValues(lambda x: len(set(x)))\

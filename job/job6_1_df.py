@@ -1,5 +1,5 @@
 import sys
-from job_rdd.job import Job, Table
+from lib import Job, Table, init
 
 def avg_init(row):
     return (row[0], row[1], 1)
@@ -13,19 +13,18 @@ def avg_cmb(old, new):
 
 def job_6_1():
 
-    print("job 6.1: creating rdd for cpu request...")
-    cpu_req = Table('task_events', Job.sc)\
+    sc = init()
+
+    cpu_req = Table('task_events', sc, exec_mode=-1)\
         .select(['job_id','task_index','cpu_request'])\
         .filter(lambda x: x[2] != 'NA')\
         .map(lambda x: ((x[0],x[1]),float(x[2])))
 
-    print("job 6.1: creating rdd for cpu usage...")
-    cpu_us = Table('task_usage', Job.sc)\
+    cpu_us = Table('task_usage', sc, exec_mode=-1)\
         .select(['job_id','task_index','cpu_rate'])\
         .filter(lambda x: x[2] != 'NA')\
         .map(lambda x: ((x[0],x[1]),float(x[2])))
 
-    print("job 6.1: computing stats...")
     cpu_cons_avg = cpu_req.join(cpu_us).combineByKey(avg_init,avg_merge, avg_cmb)
     res = cpu_cons_avg.mapValues(
         lambda x: (round(x[0]/x[2],2),round(x[1]/x[2], 2))

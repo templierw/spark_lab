@@ -1,4 +1,4 @@
-from job import Job, Table, init
+from lib import Job, Table, init
 import sys
 
 def init(new):
