@@ -46,7 +46,9 @@ In order to properly conduct our analysis, we have written a library that contai
 
 - A class Job dedicated to run the tasks in the cloud. It defines the bucket that shall be used to store data and the name of the logs at initialization, and on run it computes the time taken to process the task, and returns the metrics, the logs and the png if there exists a visualization.
 
-We also provide an implementation of some of the jobs as dataframes, in order to compare their performances.
+We also provide an implementation of most of the jobs using DataFrames instead of RDD.
+
+By doing this, we wish to see if the data structure has an impact on the computation time for our analysis, especially when applied in a cloud context over the entirety of the data set.
 
 ## Our observations
 
