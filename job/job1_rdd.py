@@ -13,9 +13,9 @@ def job_1():
         f'cpu type: {cpu_type[0]}, count: {value}' \
             for cpu_type, value in cpu_dist.items()
     )
-    end = round(time.time() - start, 2)
+    
+    return res, round(time.time() - start, 2)
 
-    return res, end
 
 def main(name):
     job = Job(name, job_1)

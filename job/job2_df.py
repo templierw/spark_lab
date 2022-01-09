@@ -1,16 +1,20 @@
 from lib import Job, create_dataframe
 import pyspark.sql.functions as F
 import sys
+import time
 
 def job_2():
 
-    task_events = create_dataframe('task_events')
-    task_per_event = task_events.groupBy('job_id').count()
+    task_events = create_dataframe('task_events', -1, True)
+    start = time.time()
+    task_per_job = task_events.groupBy('job_id').count()
 
-    return task_per_event.select(
+    res = task_per_job.select(
         F.round(F.mean('count'),2).alias('mean'), F.round(F.stddev('count'), 2).alias('std'),
         F.min('count').alias('min'), F.max('count').alias('max')
     )._jdf.showString(20, 20, False)
+
+    return res, round(time.time() - start, 2)
 
 def main(name):
     job = Job(name, job_2)

@@ -116,7 +116,7 @@ def init():
 """
 Create PySpark Dataframe
 """
-def create_dataframe(table_name):
+def create_dataframe(table_name, exec_mode, cloud):
     schema = StructType()
     spark = SparkSession.builder.master("local[*]")\
                 .appName("pyspark_lab")\
@@ -125,8 +125,19 @@ def create_dataframe(table_name):
     for h in HEADERS[table_name]:
         schema.add(h, StringType(), True)
 
+    if exec_mode == -1 and cloud:
+        fs = data(table_name)
+
+    elif exec_mode > 1 and cloud:
+        download(table_name, exec_mode, cloud=cloud)
+        fs = f"gs://wallbucket/{table_name}"
+
+    else:
+        download(table_name, exec_mode, cloud=cloud)
+        fs = f'{LOCALDATA_PATH}/{table_name}'
+
     return spark.read.option('delimiter', ',').format("csv")\
-            .schema(schema).load(data(table_name)).fillna('NA')
+            .schema(schema).load(fs).fillna('NA')
 
 """
 Cloud Table Class
