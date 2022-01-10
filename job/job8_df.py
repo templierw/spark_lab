@@ -16,12 +16,10 @@ def job_8():
     bucket = storage.Client().get_bucket('wallbucket')
     plot = bucket.blob(f'job8.df_result.png')
 
-    sample = 0.5
-
     start = time.time()
 
     submit_status = te.select(te.job_id,te.task_index,te.event_type,te.time)\
-        .filter(te.event_type == '0').select(te.job_id,te.task_index,te.time)\
+        .filter(te.event_type == '0').drop(te.event_type)\
         .withColumnRenamed('time', 'time_start_pending')
 
     cols = ['job_id', 'task_index']
@@ -30,7 +28,7 @@ def job_8():
         .filter(col('rank') == 1).drop('rank')
 
     outpending_status = te.select(te.job_id,te.task_index,te.event_type,te.time)\
-        .filter(te.event_type.isin(['1', '3', '5', '6'])).select(te.job_id,te.task_index,te.time)\
+        .filter(te.event_type.isin(['1', '3', '5', '6'])).drop(te.event_type)\
         .withColumnRenamed('time', 'time_end_pending')
 
     # Partition the dataframe by job id and task id, and order each group by timestamp
@@ -46,9 +44,9 @@ def job_8():
 
     # Compute the delta for each occurence (time spent in pending state computed from both time_start_pending and time_end_pending)
     fullpending_with_delta = fullpending.withColumn('delta_time', col('time_end_pending') - col('time_start_pending'))
-    fullpending_with_delta = fullpending_with_delta.select('job_id', 'task_index', 'delta_time')
+    fullpending_with_delta = fullpending_with_delta.select('job_id', 'delta_time')
 
-    fullpending_with_delta = fullpending_with_delta.drop('task_index').groupBy('job_id').mean('delta_time')
+    fullpending_with_delta = fullpending_with_delta.groupBy('job_id').mean('delta_time')
 
     cons_jt = tc.select(tc.job_id, tc.task_index)
     cons_jt = cons_jt.groupBy(cons_jt.job_id, cons_jt.task_index).count()
@@ -58,7 +56,7 @@ def job_8():
     full_df = fullpending_with_delta.join(cons_jt, on='job_id')
     full_df = full_df.filter(full_df['avg(count)'] < 50)
 
-    data = full_df.select('avg(delta_time)', 'avg(count)').sample(sample * 2).toPandas()
+    data = full_df.select('avg(delta_time)', 'avg(count)').toPandas()
     
     end = round(time.time() - start, 2)
     print(f"Job 8 df ended [{end}], now plotting...")

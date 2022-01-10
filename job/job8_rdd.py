@@ -13,8 +13,6 @@ def job_8():
     bucket = storage.Client().get_bucket('wallbucket')
     plot = bucket.blob(f'job8.rdd_result.png')
 
-    sample = 0.01
-
     start = time.time()
 
     # Select first SUBMIT transition for each job
