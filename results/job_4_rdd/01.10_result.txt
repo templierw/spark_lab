@@ -1,0 +1,12 @@
+total time = 155.14
+-------------------
+priority: 0 = 0.902196
+priority: 1 = 0.078722
+priority: 2 = 0.00809
+priority: 3 = 2.6e-05
+priority: 4 = 0.007429
+priority: 6 = 7.2e-05
+priority: 8 = 0.000511
+priority: 9 = 0.002869
+priority: 10 = 8.6e-05
+

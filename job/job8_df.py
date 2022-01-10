@@ -1,25 +1,31 @@
-from job import Job, Table, init
+from lib import *
 import sys
+import time
 
 import seaborn as sns
 import matplotlib.pyplot as plt
-colors = sns.color_palette('viridis')
-plt.rcParams['figure.figsize'] = [12, 8]
-plt.rcParams['figure.dpi'] = 100
 
 from pyspark.sql.window import Window
 from pyspark.sql.functions import rank, col
 from pyspark.sql import SparkSession
 
-def job_7():
+def job_8():
 
     sc = init()
     spark = SparkSession(sc)
-    task_events = Table('task_events', sc)
+    task_events = Table('task_events', sc, -1, True)
+    task_constraints = Table('task_constraints', sc, -1, True)
+
+    bucket = storage.Client().get_bucket('wallbucket')
+    plot = bucket.blob(f'job8.df_result.png')
+
+    sample = 0.01
+
+    start = time.time()
 
     # Select first SUBMIT transition for each job
     col1 = ['job_id','task_index','event_type', 'time']
-    submit_status = task_events.select(col1).filter(lambda x: x[2] in ['0'])
+    submit_status = task_events.select(col1).sample(False, sample).filter(lambda x: x[2] in ['0'])
 
     # Create a dataframe from the gathered data
     df = spark.createDataFrame(submit_status, col1).withColumnRenamed('time', 'time_start_pending')
@@ -34,7 +40,7 @@ def job_7():
             '*', rank().over(window).alias('rank')
         ).filter(col('rank') == 1)
 
-    outpending_status = task_events.select(col1).filter(
+    outpending_status = task_events.select(col1).sample(False, sample).filter(
             lambda x: x[2] in ['1', '3', '5', '6']
         )
 
@@ -57,24 +63,13 @@ def job_7():
     fullpending_with_delta = fullpending.withColumn('delta_time', col('time_end_pending') - col('time_start_pending'))
 
     # Load the task_constraints table
-    task_constraints = Table('task_constraints', spark_context=sc)
 
     # Selects each occurence of constraint registered for each process
     task_constraints_per_jobtask = task_constraints.select(['job_id', 'task_index', 'time']).map(lambda x: ((x[0],x[1]), x[2]))
 
-    # Inti, merge and combine functions for the combineByKey
-    def avg_init(row):
-        return [1]
-
-    def avg_merge(old, new):
-        return [old[0]+1]
-
-    def avg_cmb(old, new):
-        return [old[0]+new[0]]
-
     # Counts the total number of constraints for each process
     number_task_constraints_per_jobtask = task_constraints_per_jobtask.combineByKey(
-            avg_init, avg_merge, avg_cmb
+            count_init, count_merge, count_cmb
         ).map(lambda x: (x[0][0], x[0][1], x[1][0]))
 
     # Convert this RDD to a dataframe
@@ -84,14 +79,29 @@ def job_7():
     # Join the number of constraints with the delta time dataframe
     full_dataframe = fullpending_with_delta.join(df_number_task_constraints_per_jobtask, ['job_id', 'task_index'])
     
-    sns.scatterplot(data=full_dataframe.toPandas(), x="nb_constraints", y="delta_time")
+    end = round(time.time() - start, 2)
 
+    data=full_dataframe.sample(sample * 2).toPandas()
+
+    print(f"Job 8 df ended [{end}], now plotting...")
+    
+    g = sns.scatterplot(
+        data=data,
+        x="nb_constraints", y="delta_time")
+
+    g.set_title("Time spent on PENDING state depending on the number of constraints")
+    
     plt.savefig('viz.png')
+    plot.upload_from_filename('viz.png')
+    plt.close()
 
-    return full_dataframe.toPandas()
+    res = "PLOT only"
+
+    return res, end
+
 
 def main(name):
-    job = Job(name, job_7, viz=True)
+    job = Job(name, job_8)
     job.run()
     
 if __name__ == "__main__":

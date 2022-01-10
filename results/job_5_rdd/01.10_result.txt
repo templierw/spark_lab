@@ -1,0 +1,8 @@
+total time = 198.46
+-------------------
+job [6419322512], # machines = 12273
+job [515042969], # machines = 12188
+job [6114773114], # machines = 11880
+job [6336594489], # machines = 11828
+job [6221861800], # machines = 11564
+

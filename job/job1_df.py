@@ -5,6 +5,7 @@ import time
 def job_1():
 
     df = create_dataframe('machine_events', -1, True)
+    
     start = time.time()
     res = df.groupBy('cpus').count()._jdf.showString(20, 20, False)
 

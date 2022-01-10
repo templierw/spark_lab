@@ -1,0 +1,7 @@
+total time = 136.05
+-------------------
+scheduling class [2], #job: 194497, #task: 11158598
+scheduling class [0], #job: 257242, #task: 114598888
+scheduling class [1], #job: 215099, #task: 18055014
+scheduling class [3], #job: 5169, #task: 835788
+

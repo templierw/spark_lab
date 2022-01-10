@@ -5,6 +5,7 @@ import time
 def job_4():
 
     rdd = Table('task_events', init(), -1, True)
+    
     start = time.time()
 
     rdd = rdd.select(['event_type', 'priority'])\

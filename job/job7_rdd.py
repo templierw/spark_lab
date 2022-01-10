@@ -25,7 +25,7 @@ def job_7():
     # Join both RDD to have the maximum CPU rate for each evicted job
     max_cpu_evt = filtered_te.join(max_cpu_task)
 
-    final = max_cpu_evt.map(lambda x: x[1][1])
+    final = max_cpu_evt.map(lambda x: x[1][1]).sample(False, 0.1)
 
     data = final.collect()
 

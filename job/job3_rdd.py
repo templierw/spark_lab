@@ -18,6 +18,7 @@ def combine(c1, c2):
 def job_3():
 
     rdd = Table('task_events', init(), -1, True)
+    
     start = time.time()
 
     res = rdd.select(['scheduling_class','job_id'])\

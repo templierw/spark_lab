@@ -7,6 +7,7 @@ import time
 def job_2():
 
     job = Table('task_events', init(), -1, True)
+    
     start = time.time()
     tasks_per_job = list(job.select(['job_id']).countByValue().values())
 

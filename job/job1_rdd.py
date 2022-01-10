@@ -5,6 +5,7 @@ import time
 def job_1():
 
     data = Table('machine_events', init(), -1, True)
+    
     start = time.time()
 
     cpu_dist = data.select(['cpus']).countByValue()

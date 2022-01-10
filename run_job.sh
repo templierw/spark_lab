@@ -34,7 +34,7 @@ repeat(){
 echo "Creating cluster..."
 creater_cluster $BUCKET 
 
-for job in {4,5}; do
+for job in {1,2,3,4,5}; do
         JOB_NAME="job_${job}"
         n="Lauching job [${JOB_NAME}]"
         repeat ${#n}

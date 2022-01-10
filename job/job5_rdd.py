@@ -5,6 +5,7 @@ import time
 def job_5():
 
     rdd = Table('task_events', init(), -1, True)
+    
     start = time.time()
     m_per_j = rdd.select(['job_id', 'machine_id'])\
             .groupByKey()\

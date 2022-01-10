@@ -6,6 +6,7 @@ import time
 def job_3():
 
     task_events = create_dataframe('task_events', -1, True)
+    
     start = time.time()
     jts = task_events.select(
         task_events.scheduling_class, task_events.job_id, task_events.task_index

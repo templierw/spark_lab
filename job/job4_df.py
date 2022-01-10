@@ -6,6 +6,7 @@ import time
 def job_4():
     
     task_events = create_dataframe('task_events', -1, True)
+    
     start = time.time()
 
     prievic = task_events.select(task_events.priority.cast('int'), task_events.event_type.cast('int'))

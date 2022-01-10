@@ -216,3 +216,13 @@ class Job:
         output = f"{l1}\n{'-'*len(l1)}\n{res}\n\n"
         print(output)
         self.res.upload_from_string(output)
+
+# Init, merge and combine functions for the combineByKey
+def count_init(row):
+    return [1]
+
+def count_merge(old, new):
+    return [old[0]+1]
+
+def count_cmb(old, new):
+    return [old[0]+new[0]]
