@@ -11,84 +11,62 @@ from pyspark.sql import SparkSession
 
 def job_8():
 
-    sc = init()
-    spark = SparkSession(sc)
-    task_events = Table('task_events', sc, -1, True)
-    task_constraints = Table('task_constraints', sc, -1, True)
-
+    te = create_dataframe('task_events', -1 , True)
+    tc = create_dataframe('task_constraints', -1 , True)
     bucket = storage.Client().get_bucket('wallbucket')
     plot = bucket.blob(f'job8.df_result.png')
 
-    sample = 0.01
+    sample = 0.005
 
     start = time.time()
 
-    # Select first SUBMIT transition for each job
-    col1 = ['job_id','task_index','event_type', 'time']
-    submit_status = task_events.select(col1).sample(False, sample).filter(lambda x: x[2] in ['0'])
+    submit_status = te.select(te.job_id,te.task_index,te.event_type,te.time)\
+        .filter(te.event_type == '0').select(te.job_id,te.task_index,te.time)\
+        .withColumnRenamed('time', 'time_start_pending')
 
-    # Create a dataframe from the gathered data
-    df = spark.createDataFrame(submit_status, col1).withColumnRenamed('time', 'time_start_pending')
+    cols = ['job_id', 'task_index']
+    window = Window.partitionBy([col(x) for x in cols]).orderBy(submit_status['time_start_pending'])
+    inpending = submit_status.select('*', rank().over(window).alias('rank'))\
+        .filter(col('rank') == 1).drop('rank')
 
-    # Partition the dataframe by job id and task id, and order each group by timestamp
-    col2 = ['job_id', 'task_index']
-    window = Window.partitionBy([col(x) for x in col2]).orderBy(df['time_start_pending'])
-
-    # Compute the rank of each row in each partition, and filter to keep only the first row of each partition,
-    # so that the first occurence of submit transition is kept for each process (entrance of the process in pending status)
-    inpending = df.select(
-            '*', rank().over(window).alias('rank')
-        ).filter(col('rank') == 1)
-
-    outpending_status = task_events.select(col1).sample(False, sample).filter(
-            lambda x: x[2] in ['1', '3', '5', '6']
-        )
-
-    # Create a dataframe from the gathered data
-    df = spark.createDataFrame(outpending_status, col1).withColumnRenamed('time', 'time_end_pending')
+    outpending_status = te.select(te.job_id,te.task_index,te.event_type,te.time)\
+        .filter(te.event_type.isin(['1', '3', '5', '6'])).select(te.job_id,te.task_index,te.time)\
+        .withColumnRenamed('time', 'time_end_pending')
 
     # Partition the dataframe by job id and task id, and order each group by timestamp
-    window = Window.partitionBy([col(x) for x in col2]).orderBy(df['time_end_pending'])
+    window = Window.partitionBy([col(x) for x in cols]).orderBy(outpending_status['time_end_pending'])
 
     # Compute the rank of each row in each partition, and filter to keep only the first row of each partition,
     # so that the first occurence of schedule-fail-kill or lost transition is kept for each process (exit from the process in pending status)
-    outpending = df.select(
-            '*', rank().over(window).alias('rank')
-        ).filter(col('rank') == 1)
+    outpending = outpending_status.select('*', rank().over(window).alias('rank'))\
+        .filter(col('rank') == 1).drop('rank')
 
     # Join both sanitized dataframes together on job id and task id
     fullpending = inpending.join(outpending, ['job_id', 'task_index'])
 
     # Compute the delta for each occurence (time spent in pending state computed from both time_start_pending and time_end_pending)
     fullpending_with_delta = fullpending.withColumn('delta_time', col('time_end_pending') - col('time_start_pending'))
+    fullpending_with_delta = fullpending_with_delta.select('job_id', 'task_index', 'delta_time')
 
-    # Load the task_constraints table
+    fullpending_with_delta = fullpending_with_delta.drop('task_index').groupBy('job_id').mean('delta_time')
 
-    # Selects each occurence of constraint registered for each process
-    task_constraints_per_jobtask = task_constraints.select(['job_id', 'task_index', 'time']).map(lambda x: ((x[0],x[1]), x[2]))
+    cons_jt = tc.select(tc.job_id, tc.task_index)
+    cons_jt = cons_jt.groupBy(cons_jt.job_id, cons_jt.task_index).count()
+    cons_jt = cons_jt.drop('task_index').groupBy('job_id').mean('count')
 
-    # Counts the total number of constraints for each process
-    number_task_constraints_per_jobtask = task_constraints_per_jobtask.combineByKey(
-            count_init, count_merge, count_cmb
-        ).map(lambda x: (x[0][0], x[0][1], x[1][0]))
-
-    # Convert this RDD to a dataframe
-    cNames = ["job_id", "task_index", "nb_constraints"]
-    df_number_task_constraints_per_jobtask = number_task_constraints_per_jobtask.toDF(cNames)
-        
     # Join the number of constraints with the delta time dataframe
-    full_dataframe = fullpending_with_delta.join(df_number_task_constraints_per_jobtask, ['job_id', 'task_index'])
+    full_df = fullpending_with_delta.join(cons_jt, on='job_id')
+    full_df = full_df.filter(full_df['avg(count)'] < 50)
+
+    data = full_df.select('avg(delta_time)', 'avg(count)').sample(sample * 2).toPandas()
     
     end = round(time.time() - start, 2)
-
-    data=full_dataframe.sample(sample * 2).toPandas()
-
     print(f"Job 8 df ended [{end}], now plotting...")
-    
-    g = sns.scatterplot(
-        data=data,
-        x="nb_constraints", y="delta_time")
 
+    g = sns.scatterplot(data=data, x='avg(count)', y="avg(delta_time)")
+
+    g.set_xlabel("Number of constraints")
+    g.set_ylabel("Delta time")
     g.set_title("Time spent on PENDING state depending on the number of constraints")
     
     plt.savefig('viz.png')
