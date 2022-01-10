@@ -38,22 +38,13 @@ def job_8():
     # Load the task_constraints table
 
     # Selects each occurence of constraint registered for each process
-    task_constraints_per_jobtask = tc.select(['job_id', 'task_index', 'time'])\
-        .sample(False, sample)\
-        .map(lambda x: ((x[0],x[1]), x[2]))
-
-    # Do the average of nb_constraints for each job
-    avg_init = (0, 0)
-    rdd_number_task_constraints_per_job_avg_stage1 = task_constraints_per_jobtask\
-        .aggregateByKey(avg_init, lambda a,b: (a[0] + b, a[1] + 1), lambda a,b: (a[0] + b[0], a[1] + b[1]))
-    rdd_number_task_constraints_per_job_avg = rdd_number_task_constraints_per_job_avg_stage1.mapValues(lambda v: int(v[0]/v[1]))
+    task_constraints_per_jobtask = tc.select(['job_id', 'task_index', 'time']).map(lambda x: ((x[0],x[1]), x[2]))
 
     # Counts the total number of constraints for each process
-    rdd_number_task_constraints_per_jobtask = rdd_number_task_constraints_per_job_avg\
-        .combineByKey(count_init, count_merge, count_cmb).map(lambda x: ((x[0][0]+', '+x[0][1]), x[1][0]))
+    rdd_number_task_constraints_per_jobtask = task_constraints_per_jobtask.combineByKey(count_init, count_merge, count_cmb).map(lambda x: ((x[0][0]), x[1][0]))
 
-    # Join the delta time and the number of constraints in one RDD
-    rdd_delta_constraints = rdd_deltatimes.join(rdd_number_task_constraints_per_jobtask)
+        # Join the delta time and the number of constraints in one RDD
+    rdd_delta_constraints = rdd_deltatimes.join(rdd_number_task_constraints_per_job).filter(lambda x: x[1][1] < 50)
 
     # Create the list of values from the last RDD
     rdd_to_map = rdd_delta_constraints.sample(False, sample * 2).collectAsMap()
