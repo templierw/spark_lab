@@ -16,7 +16,7 @@ def job_8():
     bucket = storage.Client().get_bucket('wallbucket')
     plot = bucket.blob(f'job8.df_result.png')
 
-    sample = 0.005
+    sample = 0.5
 
     start = time.time()
 
@@ -67,7 +67,7 @@ def job_8():
 
     g.set_xlabel("Number of constraints")
     g.set_ylabel("Delta time")
-    g.set_title("Time spent on PENDING state depending on the number of constraints")
+    g.set_title("Time spent on PENDING state\n depending on the number of constraints")
     
     plt.savefig('viz.png')
     plot.upload_from_filename('viz.png')
