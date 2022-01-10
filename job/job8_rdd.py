@@ -20,22 +20,20 @@ def job_8():
     # Select first SUBMIT transition for each job
     submit_status = te.select(['job_id','task_index','event_type', 'time'])\
         .sample(False, sample)\
-        .filter(lambda x: x[2] in ['0'])
+        .filter(lambda x: x[1] in ['0'])\
+    .map(lambda x: (x[0], float(x[2])))
 
-    # Take the earliest time recorded - Start of pending
-    rdd_submit = submit_status.map(lambda x: (x[0]+', '+x[1], int(x[3])))\
-        .reduceByKey(lambda a, b: max(a, b))
+    rdd_submit = submit_status.groupByKey().mapValues(lambda x: round(sum(x)/len(x), 3))
     
     # Select first SUBMIT transition for each job
     outpending_status = te.select(['job_id','task_index','event_type', 'time'])\
         .sample(False, sample)\
-        .filter(lambda x: x[2] in ['1', '3', '5', '6'])
+        .filter(lambda x: x[1] in ['1', '3', '5', '6'])\
+    .map(lambda x: (x[0], float(x[2])))
 
-    # Take the earliest time recorded - End of pending
-    rdd_outpending = outpending_status.map(lambda x: (x[0]+', '+x[1], int(x[3])))\
-        .reduceByKey(lambda a, b: max(a, b))
+    rdd_out = outpending_status.groupByKey().mapValues(lambda x: round(sum(x)/len(x), 3))
 
-    rdd_deltatimes = rdd_submit.join(rdd_outpending).map(lambda x: (x[0], x[1][1] - x[1][0]))
+    rdd_deltatimes = rdd_submit.join(rdd_out).map(lambda x: (x[0], x[1][1] - x[1][0]))
 
     # Load the task_constraints table
 
@@ -44,8 +42,14 @@ def job_8():
         .sample(False, sample)\
         .map(lambda x: ((x[0],x[1]), x[2]))
 
+    # Do the average of nb_constraints for each job
+    avg_init = (0, 0)
+    rdd_number_task_constraints_per_job_avg_stage1 = task_constraints_per_jobtask\
+        .aggregateByKey(avg_init, lambda a,b: (a[0] + b, a[1] + 1), lambda a,b: (a[0] + b[0], a[1] + b[1]))
+    rdd_number_task_constraints_per_job_avg = rdd_number_task_constraints_per_job_avg_stage1.mapValues(lambda v: int(v[0]/v[1]))
+
     # Counts the total number of constraints for each process
-    rdd_number_task_constraints_per_jobtask = task_constraints_per_jobtask\
+    rdd_number_task_constraints_per_jobtask = rdd_number_task_constraints_per_job_avg\
         .combineByKey(count_init, count_merge, count_cmb).map(lambda x: ((x[0][0]+', '+x[0][1]), x[1][0]))
 
     # Join the delta time and the number of constraints in one RDD
@@ -66,7 +70,7 @@ def job_8():
     g.set_xlabel("Number of constraints")
     g.set_ylabel("Delta time")
 
-    g.set_title("Time spent on PENDING state depending on the number of constraints")
+    g.set_title("Time spent on PENDING state \n depending on the number of constraints")
     
     plt.savefig('viz.png')
     plot.upload_from_filename('viz.png')
