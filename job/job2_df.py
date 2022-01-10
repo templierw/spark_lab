@@ -5,10 +5,10 @@ import time
 
 def job_2():
 
-    task_events = create_dataframe('task_events', -1, True)
+    te = create_dataframe('task_events', -1, True)
     
     start = time.time()
-    task_per_job = task_events.groupBy('job_id').count()
+    task_per_job = te.groupBy('job_id').count()
 
     res = task_per_job.select(
         F.round(F.mean('count'),2).alias('mean'), F.round(F.stddev('count'), 2).alias('std'),
