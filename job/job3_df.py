@@ -5,7 +5,8 @@ import time
 
 def job_3():
 
-    te = create_dataframe('task_events', -1, True)
+    sample = 1
+    te = create_dataframe('task_events', -1, sample=sample)
     
     start = time.time()
     jts = te.select(

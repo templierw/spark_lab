@@ -55,7 +55,7 @@ EXEC = "gsutil"
 
 from pathlib import Path
 
-def download(tableName, nbFilesMax, cloud=False):
+def download(tableName, nbFilesMax):
     # Check if exists
     if (tableName not in HEADERS.keys()):
         print(f"{tableName} is not marked as available.")
@@ -63,8 +63,8 @@ def download(tableName, nbFilesMax, cloud=False):
     else:
         print(f"Will download at most {nbFilesMax} file(s) from {tableName}.")
 
-    if not cloud:
-        Path(f"{LOCALDATA_PATH}/{tableName}").mkdir(parents=True, exist_ok=True)
+    
+    Path(f"{LOCALDATA_PATH}/{tableName}").mkdir(parents=True, exist_ok=True)
 
     # Get all parts of the table in buckets
     try:
@@ -88,19 +88,12 @@ def download(tableName, nbFilesMax, cloud=False):
 
     for b in bucket[:nbFilesMax]:
 
-        if not cloud:
-            # Download it
-            print(f'Dowloading [{b}]')
-            subprocess.call(
-                [EXEC, "cp", f'{data(tableName)}{b}', f"{LOCALDATA_PATH}/{tableName}/"],
-                stderr=subprocess.PIPE, stdout=subprocess.PIPE
-                )
-
-        else:
-            subprocess.call(
-                [EXEC, "cp", f'{data(tableName)}{b}', f"gs://wallbucket/{tableName}/"],
-                stderr=subprocess.PIPE, stdout=subprocess.PIPE
-                ) 
+        # Download it
+        print(f'Dowloading [{b}]')
+        subprocess.call(
+            [EXEC, "cp", f'{data(tableName)}{b}', f"{LOCALDATA_PATH}/{tableName}/"],
+            stderr=subprocess.PIPE, stdout=subprocess.PIPE
+        )
 
     print(f"Successfully downloaded table [{tableName}] ({nbFilesMax}/{len(bucket)}).")
     return 0
@@ -116,7 +109,7 @@ def init():
 """
 Create PySpark Dataframe
 """
-def create_dataframe(table_name, exec_mode, cloud):
+def create_dataframe(table_name, exec_mode, sample):
     schema = StructType()
     spark = SparkSession.builder\
                 .appName("pyspark_lab")\
@@ -125,26 +118,22 @@ def create_dataframe(table_name, exec_mode, cloud):
     for h in HEADERS[table_name]:
         schema.add(h, StringType(), True)
 
-    if exec_mode == -1 and cloud:
+    if exec_mode == -1:
         fs = data(table_name)
 
-    elif exec_mode >= 1 and cloud:
-        download(table_name, exec_mode, cloud=cloud)
-        fs = f"gs://wallbucket/{table_name}/"
-
     else:
-        download(table_name, exec_mode, cloud=cloud)
+        download(table_name, exec_mode)
         fs = f'{LOCALDATA_PATH}/{table_name}'
 
     return spark.read.option('delimiter', ',').format("csv")\
-            .schema(schema).load(fs).fillna('NA')
+            .schema(schema).load(fs).sample(fraction=sample).fillna('NA')
 
 """
 Cloud Table Class
 """
 class Table():
 
-    def __init__(self, table_name, spark_context, exec_mode, cloud) -> None:
+    def __init__(self, table_name, spark_context, exec_mode, sample) -> None:
         
         def preprocess(row: str):
             row = row.split(',')
@@ -152,18 +141,13 @@ class Table():
                      if "" in row else row
 
         #Cluster
-        if exec_mode == -1 and cloud:
-            self.rdd = spark_context.textFile(data(table_name)).map(preprocess)
+        if exec_mode == -1:
+            self.rdd = spark_context.textFile(data(table_name)).sample(False, sample).map(preprocess)
         
-        #loca
-        elif exec_mode >= 1 and cloud:
-            download(table_name, exec_mode, cloud=cloud)
-            self.rdd = spark_context.textFile(f"gs://wallbucket/{table_name}").map(preprocess)
-        
-        elif exec_mode >= 1 and not cloud:
+        elif exec_mode >= 1:
             if not os.path.isdir(f"{LOCALDATA_PATH}/{table_name}"):
                 # Download file as it is not present
-                status = download(table_name, exec_mode, cloud=cloud)
+                status = download(table_name, exec_mode)
                 if status != 0:
                     print(f"Could not download relevant data for {table_name}...")
                     return -1

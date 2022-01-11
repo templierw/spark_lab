@@ -5,7 +5,8 @@ import time
 
 def job_2():
 
-    te = create_dataframe('task_events', -1, True)
+    sample = 1
+    te = create_dataframe('task_events', -1, sample=sample)
     
     start = time.time()
     task_per_job = te.groupBy('job_id').count()

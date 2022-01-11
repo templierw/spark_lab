@@ -17,7 +17,8 @@ def combine(c1, c2):
 
 def job_3():
 
-    rdd = Table('task_events', init(), -1, True)
+    sample = 1
+    rdd = Table('task_events', init(), -1, sample=sample)
     
     start = time.time()
 

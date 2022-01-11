@@ -7,9 +7,11 @@ import matplotlib.pyplot as plt
 
 def job_6():
 
+    sample = 0.5
+
     bucket = storage.Client().get_bucket('wallbucket')
-    te = create_dataframe('task_events', -1, True).sample(0.1)
-    tu = create_dataframe('task_usage', -1, True).sample(0.1)
+    te = create_dataframe('task_events', -1, True).sample(sample)
+    tu = create_dataframe('task_usage', -1, True).sample(sample)
     plot_cpu = bucket.blob(f'job6.1.cpu_df_result.png')
     plot_mem = bucket.blob(f'job6.1.mem_df_result.png')
 
@@ -24,7 +26,6 @@ def job_6():
 
     cpu_us = tu.select(
                 tu.job_id,
-                tu.task_index,
                 F.round(tu.cpu_rate.cast('double')*100,4).alias('cpu_rate')
         ).filter(tu.cpu_rate != 'NA')\
         .groupBy('job_id').mean('cpu_rate')
@@ -42,7 +43,7 @@ def job_6():
     print("creating plot with subset")
 
     final.select(final.delta).sample(0.2).toPandas().hist()
-    plt.title('Histograms of request cpu minus used deltas')
+    plt.title('Histograms of requested \n cpu minus used deltas')
     plt.xlabel('delta')
     plt.ylabel('count')
     plt.savefig('viz.png')
@@ -63,7 +64,6 @@ def job_6():
 
     mem_us = tu.select(
                 tu.job_id,
-                tu.task_index,
                 F.round(tu.canonical_memory_usage.cast('double')*100,4).alias('mem_us')
         ).filter(tu.canonical_memory_usage != 'NA')\
         .groupBy('job_id').mean('mem_us')

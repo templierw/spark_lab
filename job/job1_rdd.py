@@ -4,7 +4,8 @@ import time
 
 def job_1():
 
-    data = Table('machine_events', init(), -1, True)
+    sample = 1
+    data = Table('machine_events', init(), -1,sample=sample)
     
     start = time.time()
 
