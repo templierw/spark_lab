@@ -24,14 +24,14 @@ def job_8():
         .filter(te.event_type == '0').select(te.job_id,te.task_index,te.time)\
         .withColumnRenamed('time', 'time_start_pending')
 
-    inpending = submit_status.groupBy(['job_id', 'task_index']).agg(F.min('time_start_pending').alias('time_start_pending'))
+    inpending = submit_status.groupBy(['job_id', 'task_index']).agg(F.min('time_start_pending')).withColumnRenamed('min(time_start_pending)', 'time_start_pending')
 
     # Select the first timestamp at which all processes exit the PENDING state
     outpending_status = te.select(te.job_id,te.task_index,te.event_type,te.time)\
         .filter(te.event_type.isin(['1', '3', '5', '6'])).select(te.job_id,te.task_index,te.time)\
         .withColumnRenamed('time', 'time_end_pending')
         
-    outpending = outpending_status.groupBy(['job_id', 'task_index']).agg(min('time_end_pending').alias('time_end_pending'))
+    outpending = outpending_status.groupBy(['job_id', 'task_index']).agg(F.min('time_end_pending')).withColumnRenamed('min(time_end_pending)', 'time_end_pending')
 
     # Join both sanitized dataframes together on job id and task id
     fullpending = inpending.join(outpending, ['job_id', 'task_index'])
