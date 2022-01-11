@@ -18,14 +18,12 @@ def job_7():
     start = time.time()
 
     max_cpu_task = tu.select(['job_id', 'maximum_cpu_rate'])\
-                        .sample(False, sample)\
                         .mapValues(lambda x: round(float(x)*100))\
                         .reduceByKey(max)\
                         .filter(lambda x: x[1] < 100)
 
     # Select the jobs that were evicted
     filtered_te = te.select(['job_id', 'event_type'])\
-        .sample(False, sample)\
         .filter(lambda x: x[1] == '2').distinct()
 
     # Join both RDD to have the maximum CPU rate for each evicted job
