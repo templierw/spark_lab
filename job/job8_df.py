@@ -6,7 +6,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 from pyspark.sql.window import Window
-from pyspark.sql.functions import rank, col, min
+import pyspark.sql.functions as F
 from pyspark.sql import SparkSession
 
 def job_8():
@@ -24,7 +24,7 @@ def job_8():
         .filter(te.event_type == '0').select(te.job_id,te.task_index,te.time)\
         .withColumnRenamed('time', 'time_start_pending')
 
-    inpending = submit_status.groupBy(['job_id', 'task_index']).agg(min('time_start_pending').alias('time_start_pending'))
+    inpending = submit_status.groupBy(['job_id', 'task_index']).agg(F.min('time_start_pending').alias('time_start_pending'))
 
     # Select the first timestamp at which all processes exit the PENDING state
     outpending_status = te.select(te.job_id,te.task_index,te.event_type,te.time)\
@@ -37,11 +37,11 @@ def job_8():
     fullpending = inpending.join(outpending, ['job_id', 'task_index'])
 
     # Compute the delta for each occurence (time spent in pending state computed from both time_start_pending and time_end_pending)
-    fullpending_with_delta = fullpending.withColumn('delta_time', col('time_end_pending') - col('time_start_pending'))
+    fullpending_with_delta = fullpending.withColumn('delta_time', F.col('time_end_pending') - F.col('time_start_pending'))
     fullpending_with_delta = fullpending_with_delta.select('job_id', 'delta_time')
 
     # Compute the mean delta time for each job
-    fullpending_with_delta = fullpending_with_delta.drop('task_index').groupBy('job_id').mean('delta_time')
+    fullpending_with_delta = fullpending_with_delta.groupBy('job_id').mean('delta_time')
 
     # compute the mean number of constraints for each job
     cons_jt = tc.select(tc.job_id, tc.task_index)
