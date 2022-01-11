@@ -8,10 +8,9 @@ import matplotlib.pyplot as plt
 def job_6():
 
     sample = 0.5
-
     bucket = storage.Client().get_bucket('wallbucket')
-    te = create_dataframe('task_events', -1, True).sample(sample)
-    tu = create_dataframe('task_usage', -1, True).sample(sample)
+    te = create_dataframe('task_events', -1, sample=sample)
+    tu = create_dataframe('task_usage', -1, sample=sample)
     plot_cpu = bucket.blob(f'job6.1.cpu_df_result.png')
     plot_mem = bucket.blob(f'job6.1.mem_df_result.png')
 
@@ -40,9 +39,10 @@ def job_6():
     res_2 = f"Top 10 frugal: \n{final.sort('delta', ascending=False)._jdf.showString(10, 20, False)}\n"
 
     int_time = time.time() - start
+    final = final.select(final.delta).sample(0.2).toPandas().hist()
+    
     print("creating plot with subset")
 
-    final.select(final.delta).sample(0.2).toPandas().hist()
     plt.title('Histograms of requested \n cpu minus used deltas')
     plt.xlabel('delta')
     plt.ylabel('count')

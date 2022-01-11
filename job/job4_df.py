@@ -5,7 +5,8 @@ import time
 
 def job_4():
     
-    task_events = create_dataframe('task_events', -1, True)
+    sample = 1
+    task_events = create_dataframe('task_events', -1, sample=sample)
     
     start = time.time()
 

@@ -4,7 +4,8 @@ import time
 
 def job_4():
     
-    task_events = create_dataframe('task_events', -1, True)
+    sample = 1
+    task_events = create_dataframe('task_events', -1, sample=sample)
     
     start = time.time()
     m_per_f = task_events.select(task_events.job_id, task_events.machine_id)

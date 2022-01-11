@@ -8,8 +8,9 @@ from google.cloud import storage
 def job_8():
 
     sc = init()
-    te = Table('task_events', sc, -1, True)
-    tc = Table('task_constraints', sc, -1, True)
+    sample = 0.1
+    te = Table('task_events', sc, -1, sample=sample)
+    tc = Table('task_constraints', sc, -1, sample=sample)
     bucket = storage.Client().get_bucket('wallbucket')
     plot = bucket.blob(f'job8.rdd_result.png')
 

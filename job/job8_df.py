@@ -4,15 +4,13 @@ import time
 
 import seaborn as sns
 import matplotlib.pyplot as plt
-
-from pyspark.sql.window import Window
 import pyspark.sql.functions as F
-from pyspark.sql import SparkSession
 
 def job_8():
 
-    te = create_dataframe('task_events', -1 , True)
-    tc = create_dataframe('task_constraints', -1 , True)
+    sample = 1.0
+    te = create_dataframe('task_events', -1 , sample=sample)
+    tc = create_dataframe('task_constraints', -1 , sample=sample)
     bucket = storage.Client().get_bucket('wallbucket')
     plot = bucket.blob(f'job8.df_result.png')
 
@@ -20,37 +18,41 @@ def job_8():
 
     # Select the first timestamp at which all processes enter in PENDING state
     # Only the first wait period in this state interests us
-    submit_status = te.select(te.job_id,te.task_index,te.event_type,te.time)\
-        .filter(te.event_type == '0').select(te.job_id,te.task_index,te.time)\
+    submit_status = te.select(te.job_id, te.task_index, te.event_type, te.time.cast('double'))\
+        .filter(te.event_type == '0').drop(te.event_type)\
         .withColumnRenamed('time', 'time_start_pending')
 
-    inpending = submit_status.groupBy(['job_id', 'task_index']).agg(F.min('time_start_pending')).withColumnRenamed('min(time_start_pending)', 'time_start_pending')
+    inpending = submit_status.groupBy(['job_id', 'task_index']).min('time_start_pending')
+    inpending = inpending.withColumnRenamed('min(time_start_pending)','time_start_pending')
 
     # Select the first timestamp at which all processes exit the PENDING state
-    outpending_status = te.select(te.job_id,te.task_index,te.event_type,te.time)\
-        .filter(te.event_type.isin(['1', '3', '5', '6'])).select(te.job_id,te.task_index,te.time)\
+    outpending_status = te.select(te.job_id, te.task_index, te.event_type, te.time.cast('double'))\
+        .filter(te.event_type.isin(['1', '3', '5', '6'])).drop(te.event_type)\
         .withColumnRenamed('time', 'time_end_pending')
         
-    outpending = outpending_status.groupBy(['job_id', 'task_index']).agg(F.min('time_end_pending')).withColumnRenamed('min(time_end_pending)', 'time_end_pending')
+    outpending = outpending_status.groupBy(['job_id', 'task_index']).min('time_end_pending')
+    outpending = outpending.withColumnRenamed('min(time_end_pending)','time_end_pending')
 
     # Join both sanitized dataframes together on job id and task id
     fullpending = inpending.join(outpending, ['job_id', 'task_index'])
 
     # Compute the delta for each occurence (time spent in pending state computed from both time_start_pending and time_end_pending)
-    fullpending_with_delta = fullpending.withColumn('delta_time', F.col('time_end_pending') - F.col('time_start_pending'))
+    fullpending_with_delta = fullpending.withColumn(
+        'delta_time', F.col('time_end_pending') - F.col('time_start_pending')
+    )
     fullpending_with_delta = fullpending_with_delta.select('job_id', 'delta_time')
 
     # Compute the mean delta time for each job
     fullpending_with_delta = fullpending_with_delta.groupBy('job_id').mean('delta_time')
 
-    # compute the mean number of constraints for each job
+    # compute the mean number of constraints for each job/task than avg
     cons_jt = tc.select(tc.job_id, tc.task_index)
     cons_jt = cons_jt.groupBy(cons_jt.job_id, cons_jt.task_index).count()
     cons_jt = cons_jt.drop('task_index').groupBy('job_id').mean('count')
+    cons_jt = cons_jt.filter(cons_jt['avg(count)'] < 50)
 
     # Join the number of constraints with the delta time dataframe
     full_df = fullpending_with_delta.join(cons_jt, on='job_id')
-    full_df = full_df.filter(full_df['avg(count)'] < 50)
 
     data = full_df.select('avg(delta_time)', 'avg(count)').toPandas()
     

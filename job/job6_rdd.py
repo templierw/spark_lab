@@ -16,7 +16,8 @@ def job_6_1():
 
     sc = init()
 
-    rdd =  Table('task_events', sc, 100, True)
+    sample = 0.1
+    rdd =  Table('task_events', sc, 100, sample=sample)
     start = time.time()
 
     cpu_req = rdd.select(['job_id','task_index','cpu_request'])\

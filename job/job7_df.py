@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 def job_7():
 
-    sample = 0.05
+    sample = 0.1
 
     bucket = storage.Client().get_bucket('wallbucket')
     te = create_dataframe('task_events', -1, sample=sample)
@@ -22,6 +22,7 @@ def job_7():
         ).groupBy('job_id').max('mcrate')
 
     max_cpu = max_cpu.select(max_cpu.job_id, F.round('max(mcrate)',2).alias('mcrate'))
+    max_cpu = max_cpu.filter(max_cpu.mcrate < 100)
     filtered_te = te.filter(te.event_type == '2').select(te.job_id).distinct()
 
     max_cpu_evt = filtered_te.join(max_cpu, on='job_id')
