@@ -6,7 +6,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 from pyspark.sql.window import Window
-from pyspark.sql.functions import rank, col
+from pyspark.sql.functions import rank, col, min
 from pyspark.sql import SparkSession
 
 def job_8():
@@ -18,29 +18,20 @@ def job_8():
 
     start = time.time()
 
-    # Select all events that cause to enter PENDING
+    # Select the first timestamp at which all processes enter in PENDING state
+    # Only the first wait period in this state interests us
     submit_status = te.select(te.job_id,te.task_index,te.event_type,te.time)\
-        .filter(te.event_type == '0').drop(te.event_type)\
+        .filter(te.event_type == '0').select(te.job_id,te.task_index,te.time)\
         .withColumnRenamed('time', 'time_start_pending')
 
-    # Keep only the first one for a task. Not included cases where brought back to life
-    cols = ['job_id', 'task_index']
-    window = Window.partitionBy([col(x) for x in cols]).orderBy(submit_status['time_start_pending'])
-    inpending = submit_status.select('*', rank().over(window).alias('rank'))\
-        .filter(col('rank') == 1).drop('rank')
+    inpending = submit_status.groupBy(['job_id', 'task_index']).agg(min('time_start_pending').alias('time_start_pending'))
 
-    # Select all events that cause to exit PENDING
+    # Select the first timestamp at which all processes exit the PENDING state
     outpending_status = te.select(te.job_id,te.task_index,te.event_type,te.time)\
-        .filter(te.event_type.isin(['1', '3', '5', '6'])).drop(te.event_type)\
+        .filter(te.event_type.isin(['1', '3', '5', '6'])).select(te.job_id,te.task_index,te.time)\
         .withColumnRenamed('time', 'time_end_pending')
-
-    # Keep only the first one for a task.
-    window = Window.partitionBy([col(x) for x in cols]).orderBy(outpending_status['time_end_pending'])
-
-    # Compute the rank of each row in each partition, and filter to keep only the first row of each partition,
-    # so that the first occurence of schedule-fail-kill or lost transition is kept for each process (exit from the process in pending status)
-    outpending = outpending_status.select('*', rank().over(window).alias('rank'))\
-        .filter(col('rank') == 1).drop('rank')
+        
+    outpending = outpending_status.groupBy(['job_id', 'task_index']).agg(min('time_end_pending').alias('time_end_pending'))
 
     # Join both sanitized dataframes together on job id and task id
     fullpending = inpending.join(outpending, ['job_id', 'task_index'])
@@ -49,8 +40,10 @@ def job_8():
     fullpending_with_delta = fullpending.withColumn('delta_time', col('time_end_pending') - col('time_start_pending'))
     fullpending_with_delta = fullpending_with_delta.select('job_id', 'delta_time')
 
-    fullpending_with_delta = fullpending_with_delta.groupBy('job_id').mean('delta_time')
+    # Compute the mean delta time for each job
+    fullpending_with_delta = fullpending_with_delta.drop('task_index').groupBy('job_id').mean('delta_time')
 
+    # compute the mean number of constraints for each job
     cons_jt = tc.select(tc.job_id, tc.task_index)
     cons_jt = cons_jt.groupBy(cons_jt.job_id, cons_jt.task_index).count()
     cons_jt = cons_jt.drop('task_index').groupBy('job_id').mean('count')

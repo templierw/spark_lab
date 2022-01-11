@@ -36,9 +36,11 @@ def job_8():
     rdd_deltatimes = rdd_deltatimes.groupByKey().mapValues(lambda x: round(sum(x)/len(x), 3))
 
     # Selects each occurence of constraint registered for each process
-    task_constraints_per_job = tc.select(['job_id'])\
-        .map(lambda x: (x[0],1))\
-        .reduceByKey(lambda a,b: a+b)
+    task_constraints_per_job = tc.select(['job_id', 'task_index'])\
+        .map(lambda x: (x[0]+', '+x[1],1))\
+        .reduceByKey(lambda a,b: a+b)\
+        .map(lambda x: (x[0].split(', ')[0], x[1]))
+    task_constraints_per_job = task_constraints_per_job.groupByKey().mapValues(lambda x: round(sum(x)/len(x), 3))
 
     rdd_delta_constraints = rdd_deltatimes.join(task_constraints_per_job).filter(lambda x: x[1][1] < 50)
 
