@@ -8,7 +8,7 @@ from google.cloud import storage
 def job_8():
 
     sc = init()
-    sample = 0.1
+    sample = 1.0
     te = Table('task_events', sc, -1, sample=sample)
     tc = Table('task_constraints', sc, -1, sample=sample)
     bucket = storage.Client().get_bucket('wallbucket')

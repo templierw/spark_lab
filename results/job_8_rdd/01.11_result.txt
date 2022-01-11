@@ -1,4 +1,4 @@
-total time = 157.04
+total time = 403.37
 -------------------
 PLOT only
 

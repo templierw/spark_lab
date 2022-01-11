@@ -43,7 +43,7 @@ def job_6():
     
     print("creating plot with subset")
 
-    plt.title('Histograms of requested \n cpu minus used deltas')
+    plt.title('Histogram of requested \n cpu minus used deltas')
     plt.xlabel('delta')
     plt.ylabel('count')
     plt.savefig('viz.png')
