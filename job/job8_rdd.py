@@ -15,21 +15,25 @@ def job_8():
 
     start = time.time()
 
-    # Select first SUBMIT transition for each job
-    submit_status = te.select(['job_id','event_type', 'time'])\
-        .filter(lambda x: x[1] in ['0'])\
-        .map(lambda x: (x[0], float(x[2])))
+    # Select first SUBMIT transition for each job & task
+    submit_status = te.select(['job_id', 'task_index', 'event_type', 'time'])\
+        .filter(lambda x: x[2] in ['0'])\
+        .map(lambda x: (x[0]+', '+x[1], float(x[3])))
 
-    rdd_submit = submit_status.groupByKey().mapValues(lambda x: round(sum(x)/len(x), 3))
-    
-    # Select first OUT transition for each job
-    outpending_status = te.select(['job_id','event_type', 'time'])\
-        .filter(lambda x: x[1] in ['1', '3', '5', '6'])\
-        .map(lambda x: (x[0], float(x[2])))
+    rdd_submit = submit_status.reduceByKey(min)
 
-    rdd_out = outpending_status.groupByKey().mapValues(lambda x: round(sum(x)/len(x), 3))
+    # Select first OUT transition for each job & task
+    outpending_status = te.select(['job_id', 'task_index', 'event_type', 'time'])\
+        .filter(lambda x: x[2] in ['1', '3', '5', '6'])\
+        .map(lambda x: (x[0]+', '+x[1], float(x[3])))
 
-    rdd_deltatimes = rdd_submit.join(rdd_out).map(lambda x: (x[0], x[1][1] - x[1][0]))
+    rdd_out = outpending_status.reduceByKey(min)
+
+    # Join everything and compute delta time for each job & task
+    rdd_deltatimes = rdd_submit.join(rdd_out).map(lambda x: (x[0].split(', ')[0], x[1][1] - x[1][0]))
+
+    # Average of the delta times for each job
+    rdd_deltatimes = rdd_deltatimes.groupByKey().mapValues(lambda x: round(sum(x)/len(x), 3))
 
     # Selects each occurence of constraint registered for each process
     task_constraints_per_job = tc.select(['job_id'])\

@@ -18,20 +18,23 @@ def job_8():
 
     start = time.time()
 
+    # Select all events that cause to enter PENDING
     submit_status = te.select(te.job_id,te.task_index,te.event_type,te.time)\
         .filter(te.event_type == '0').drop(te.event_type)\
         .withColumnRenamed('time', 'time_start_pending')
 
+    # Keep only the first one for a task. Not included cases where brought back to life
     cols = ['job_id', 'task_index']
     window = Window.partitionBy([col(x) for x in cols]).orderBy(submit_status['time_start_pending'])
     inpending = submit_status.select('*', rank().over(window).alias('rank'))\
         .filter(col('rank') == 1).drop('rank')
 
+    # Select all events that cause to exit PENDING
     outpending_status = te.select(te.job_id,te.task_index,te.event_type,te.time)\
         .filter(te.event_type.isin(['1', '3', '5', '6'])).drop(te.event_type)\
         .withColumnRenamed('time', 'time_end_pending')
 
-    # Partition the dataframe by job id and task id, and order each group by timestamp
+    # Keep only the first one for a task.
     window = Window.partitionBy([col(x) for x in cols]).orderBy(outpending_status['time_end_pending'])
 
     # Compute the rank of each row in each partition, and filter to keep only the first row of each partition,
