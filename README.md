@@ -49,19 +49,3 @@ In order to properly conduct our analysis, we have written a library that contai
 We also provide an implementation of most of the jobs using DataFrames instead of RDD.
 
 By doing this, we wish to see if the data structure has an impact on the computation time for our analysis, especially when applied in a cloud context over the entirety of the data set.
-
-## Our observations
-
-As we experienced our implementation on both a local machine and a cloud instance, we noticed multiple differences.
-
-As we expected, running our implementation on a local machine does not allows us to treat a large amount of data, for multiple reasons: this requires to download a large amount of data to have access to one table, and the fact of running the code on one machine not really designed for this purpose, like our laptops, greatly limitates the number of workers that can run in parallel. 
-
-Thus, it takes a large amount of time to treat more than one part of a large table.
-
-On the other side, running the tasks on a Google Cloud instance gives several advantages that reduces the processing time by far, and allows us to treat more data at once.
-
-GCP allows to copy seamlessly the tables from the public bucket to ours, thus removing the downloading delay (not really part of the processing time in itself, but still important to consider).
-
-In addition, running in the cloud allows to use more workers on different machines. This means that more computing power is allocated to RDD manipulations, such as the combine, join and sort operation that often heavily consumes resources.
-
-All of this allows to process the analysis on the entirety of the tables, allowing us to print real statistics valid on the full dataset, instead of doing assumptions from a small selection that does not represents the reality of the situation.

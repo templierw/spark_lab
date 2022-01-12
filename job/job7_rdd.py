@@ -27,17 +27,20 @@ def job_7():
         .filter(lambda x: x[1] == '2').distinct()
 
     # Join both RDD to have the maximum CPU rate for each evicted job
-    max_cpu_evt = filtered_te.join(max_cpu_task)
+    #max_cpu_evt = filtered_te.join(max_cpu_task)
+    max_cpu_evt = filtered_te.join(max_cpu_task).map(lambda x: (int(x[1][1]), int(1))).reduceByKey(lambda a, b: a+b)
 
-    data = max_cpu_evt.collect()
+    #data = max_cpu_evt.collect()
+    data = max_cpu_evt.collectAsMap()
 
     end = round(time.time() - start, 2)
     print(f"Job 7 rdd ended [{end}], now plotting...")
 
-    sns.histplot(data=[x[1] for x in data])
+    #sns.histplot(data=[x[1] for x in data])
+    plt.bar(data.keys(), data.values())
     plt.title('Histograms of evicted cpu \n w.r.t their maximum cpu rate')
-    plt.xlabel('maximum cpu rate')
-    plt.ylabel('count')
+    plt.xlabel('Maximum cpu rate')
+    plt.ylabel('Number of instances')
     plt.savefig('viz.png')
     plot.upload_from_filename('viz.png')
     plt.close()
