@@ -14,7 +14,7 @@ You will find enclosed:
 
 ## Conducted analysis
 
-For this project, we have conducted the following analysis on a local computer with a subset of the data :
+For this project, we have conducted the following analysis on a local computer with a subset of the data:
 
 - Distribution of the machines according to their CPU capacity
 
@@ -32,19 +32,9 @@ For this project, we have conducted the following analysis on a local computer w
 
 - Influence of the number of constraints applied on a task over the time spent in PENDING state
 
-Apart from the last task that was processed using DataFrames, all of the above were studied using RDDs.
-
 Those tasks were computed on local computers with a small subset of the original data and one worker, and on a cloud instance that has a direct access to the bucket, and is able to run 5 workers in parallel.
 
-In order to properly conduct our analysis, we have written a library that contains several utilities:
-
-- A download function that handles the interactions with gsutil, and allows the user to download either a part or the entierety of a table passed as argument.
-  
-- A create_dataframe function that centralizes the proper dataframe creation from a table with the correct headers associated.
-
-- A Table class that automatically handles the downloading of the polled table (with the first function above), creates the associated RDD and puts it in cache. It also contains a select function to get specific columns from the RDD, and a "pretty print" to properly display the contents of a table.
-
-- A class Job dedicated to run the tasks in the cloud. It defines the bucket that shall be used to store data and the name of the logs at initialization, and on run it computes the time taken to process the task, and returns the metrics, the logs and the png if there exists a visualization.
+In order to properly conduct our analysis, we have written a library that contains several utilities, like an automatic dataset downloader, a RDD and Dataframe creator that parses the requested table and put it in form in the requested data structure type.
 
 We also provide an implementation of most of the jobs using DataFrames instead of RDD.
 
