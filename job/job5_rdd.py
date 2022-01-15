@@ -4,7 +4,7 @@ import time
 
 def job_5():
 
-    sample = 1
+    sample = 0.5
     rdd = Table('task_events', init(), -1, sample=sample)
     
     start = time.time()

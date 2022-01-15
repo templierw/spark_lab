@@ -1,20 +1,22 @@
 # Analyzing data with spark
 
-Vincent Aubriot, William Templer
+Vincent Aubriot
+
+William Templier
 
 ## Contents of the archive
 
 You will find enclosed:
 
-- The file lab_new.ipynb, that contains the analysis conducted over the data on a local computer (raw data, visualizations and interpretations), and the associated python code.
+- The file `notebook.ipynb`, that contains the analysis conducted over the data on a local computer (raw data, visualizations and interpretations), and the associated python code.
 - lib.py that contains utilities functions described on the next part.
 - the run_job.sh script that is in charge of creating a cluster on which the jobs will be executed, launching each version of each job (either using a RDD or a DataFrame to store the data and process the computations), and finally cleaning up the cluster at the end.
-- the job folder, with: the job.py, copy of the library file, and two files per analysis described on the next part (one for each type of implementation: RDD or DataFrame).
-- And finally, in results, you will find the logs and visualizations that we obtained by processing the jobs on the cloud.
+- the job folder, for cluster execution, with the RDD and DF versions for each job.
+- And finally, in results, you will find the logs and visualizations that we obtained by processing the jobs on the cloud (they were store in a bucket and retrieved with `gsutil`).
 
 ## Conducted analysis
 
-For this project, we have conducted the following analysis on a local computer with a subset of the data:
+For this project, we have conducted the following analysis on a local computer with a subset of the data (it is what we call **job**):
 
 - Distribution of the machines according to their CPU capacity
 
@@ -36,6 +38,6 @@ Those tasks were computed on local computers with a small subset of the original
 
 In order to properly conduct our analysis, we have written a library that contains several utilities, like an automatic dataset downloader, a RDD and Dataframe creator that parses the requested table and put it in form in the requested data structure type.
 
-We also provide an implementation of most of the jobs using DataFrames instead of RDD.
+We also provide an implementation of all jobs using DataFrames.
 
 By doing this, we wish to see if the data structure has an impact on the computation time for our analysis, especially when applied in a cloud context over the entirety of the data set.

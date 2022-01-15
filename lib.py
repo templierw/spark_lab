@@ -103,8 +103,8 @@ def download(tableName, nbFilesMax):
 Spark session
 """
 
-def init():
-    return SparkContext()
+def init(context='local[*]'):
+    return SparkContext(context)
 
 """
 Create PySpark Dataframe
